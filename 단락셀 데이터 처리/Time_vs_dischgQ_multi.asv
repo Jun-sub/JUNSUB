@@ -1,0 +1,73 @@
+clear; clc; close all;
+
+%순서: 0인 데이터 trim --> 데이터 스텝별 나누기 --> 시간 플랏
+folder = 'G:\공유 드라이브\BSL-Data\카이스트_단락셀\카이스트 단락셀\2차 셀 데이터\Aging';
+files = dir(folder);
+
+c_map = jet(length(files));
+cline = [rand(1) 0 rand(1)*0.3]
+
+tic_overall = tic;
+figure()
+hold on;
+for i = 3:length(files)-1
+clear time_sum; clear Q_sum
+    tic_cycle = tic;
+    
+    file_name = files(i).name;
+    data = readtable([folder filesep file_name], "FileType","text",'NumHeaderLines', 11, 'ReadVariableNames', false);
+    
+    % data_trim
+    data = data(data.Var18 ~= 0,:);
+
+    time = data.Var2;
+    cycle = data.Var3;
+    Q = data.Var18;
+    
+    % 마지막 강제사이클 제외
+    for k = 1:max(cycle)-2
+        cycle_idx = (cycle == k);
+        time_end = time(cycle_idx);
+        Q_end = Q(cycle_idx);
+        
+        time_sum(k) = time_end(end);
+        Q_sum(k) = Q_end(end);
+ 
+    end
+    plot(time_sum, Q_sum, 'k-','LineStyle','-','Color',cline,'LineWidth',1)
+    scatter(time_sum(end),Q_sum(end),'bo','filled')
+
+    legend_name(i-2) = {file_name};
+
+    data_pdf(i) = time_sum(end);
+    fprintf('%d step of %d is processed \n',i-2,length(files)-2)
+    toc(tic_cycle);
+end
+hold off;
+
+title('Time vs Q');
+xlabel('Time [s]');
+ylabel('Capacity [mAh]');
+%legend(legend_name);
+grid on; box on;
+set(gca,'Fontunits','points','FontSize',10,'FontName','Times New Roman','PlotBoxAspectRatio',[1 1 1])
+
+% Normalized distr
+data_pdf = data_pdf(2:end);
+data_pdf = seconds(data_pdf);
+
+figure()
+histogram(data_pdf,'NumBins', 10,'Normalization','pdf');
+x = linspace(min(data_pdf), max(data_pdf), 100);
+pdf = normpdf(x,mean(data_pdf), std(data_pdf));
+
+hold on;
+plot(x, pdf, 'r', 'LineWidth', 2); % 빨간색 선으로 PDF 표시
+xlabel('Time');
+ylabel('Probability Density');
+title('Histogram with Normal Distribution PDF');
+legend('Histogram', 'ND-PDF');
+hold off;
+
+fprintf('전체')
+toc(tic_overall);

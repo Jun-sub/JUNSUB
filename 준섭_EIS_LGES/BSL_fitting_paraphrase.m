@@ -1,11 +1,11 @@
 
-clear; clc; close all;
+clear; clc; close all; %초기화
 
 %% Configuration
 
 %EIS data path
-    folder = '';
-    file = '';
+    folder = 'G:\공유 드라이브\BSL-Data\LGES\LG raw data\12_6cm2_soc10_EIS # Sample 1';
+    file = 'PEIS_C09_cathode_cycle_soc30.csv';
 
 % SOC and T
     soc = 0.5; %[1]
@@ -40,9 +40,9 @@ clear; clc; close all;
         ];
 
     lb = bounds(:,1); % lower bounds
-    up = bounds(:,2); % upper bounds
+    ub = bounds(:,2); % upper bounds
 
-    factors_ini = [1 1 1 1 1 1 1]; %Factor*bounds 식에서 bounds 변화를 통해서 계산.
+    factors_ini = [1 1 1 1 1 1 1]; 
 
 %% Load and Pre-processing Data
 
@@ -84,11 +84,24 @@ clear; clc; close all;
             weight_matrix = ones(size(z_re_data));
         end
 
+  %% Call EIS model
+    weighted_model = @(factors,f_data)BSL_func_EISmodel_V1_half(f_data, factors,soc,T,type_acf)...
+       .*weight_matrix;
+   weighted_data = z_data.*weight_matrix;
 
+   tic;
+   [factors_hat, resnorm,residual,~,~,~,jacobian_hat] ...
+        = lsqcurvefit(weighted_model,factors_ini,...
+                      f_data,weighted_data, lb, ub, options); %lsqcurvefit을 이용한 최적화. factor_ini를 최적화하여 factor_hat을 도출. 
+   toc;
+   
     %% Plot Results
-  %  [z_model0, paras_used0] = BSL_func_EISmodel(f_data,factors_ini, soc, T, type_acf)
-  %  [z_model1, paras_used1] = BSL_func_EISmodel(f_data,factors_hat, soc, T, type_acf) 
-  % 이 부분 아직 이해 불가. 
+    [z_model0, paras_used0] = BSL_func_EISmodel_V1_half(f_data,factors_ini, soc, T, type_acf); %initial parameter 값을 가지고 구한 output
+    [z_model1, paras_used1] = BSL_func_EISmodel_V1_half(f_data,factors_hat, soc, T, type_acf); %optimized factor 값을 가지고 구한 output
+  
+
+  
+
 
     % Nyquist plot
     figure(2)
@@ -110,10 +123,24 @@ clear; clc; close all;
 
     % Zoom-in semicircle
     figure(3) %우선 그냥 플랏
-    plot(z_data(:,1), -z_data(:,2), 'ok', 'linewidht', 1); hold on
-    plot(z_model0(:,1), -z_model0(:,2), 'ob', 'linewidht', 1);
-    plot(z_model1(:,1), -z_model1(:,2), 'or', 'linewidht', 1);
+    plot(z_data(:,1), -z_data(:,2), 'ok', 'linewidth', 1); hold on
+    plot(z_model0(:,1), -z_model0(:,2), 'ob', 'linewidth', 1);
+    plot(z_model1(:,1), -z_model1(:,2), 'or', 'linewidth', 1);
     legend('Exp Data', 'Model Initial', 'Model fit')
 
     f_zoom_lb = 10; %[Hz]
-    idx_zoom = f_data > f_zoom_lb
+    idx_zoom = f_data > f_zoom_lb; %10 Hz보다 큰 데이터의 인덱스 설정
+    axis_limit = 1.1*max(max(abs(z_data(idx_zoom))));
+    set(gca,'Box','on',... %위와 동일한 설정. 
+    'PlotBoxAspectRatio',[1 1 1],... 
+    'FontUnits','points','FontSize',10,'FontName','Times New Roman',... 
+    'XLim',[0 axis_limit],'Ylim',[0 axis_limit])
+    hold off
+    xlabel('Z_{re} [Ohm]')
+    ylabel('-Z_{im} [Ohm]')
+
+    %% Result Summary
+
+    Result.factors_hat = factors_hat';
+    Result.paras_hat = paras_used1';
+    Result.z_model = z_model1; 
