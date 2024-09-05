@@ -23,7 +23,7 @@ clear; clc; close all
     type_acf =2; % 1 for anode, 2 for cathode, 3 for full cell
 
 % Optimization options
-    
+    %move into for iteration
 
 
 % Parameters 
@@ -86,6 +86,7 @@ clear; clc; close all
 %% Call EIS model
 factors_hat = factors_ini;
 
+
 for n = 1:10 %53
 options= optimset('display','Iter','MaxIter',1,'MaxFunEvals',1e5,...
         'TolFun',1e-8,'TolX',1e-8,'FinDiffType','central');
@@ -125,6 +126,7 @@ daspect ([1 1 2])
     hold off
     
 
+
 % Zoom-in semicircle
 figure(3)
 plot(z_data(:,1),-z_data(:,2),'ok','linewidth',1); hold on
@@ -152,8 +154,8 @@ end
 
 fprintf ('Model was fitted to the experimental data')
 
-Opt_data = [paras0([2 4]') paras1([2 4]')] 
-openvar("Opt_data")
+% Opt_data = [paras0([2 4]') paras1([2 4]')] 
+% openvar("Opt_data")
 %% Result Summary
    
 Result.factors_hat = factors_hat;
