@@ -18,12 +18,12 @@
     % fitting할 soc 범위 지정, 0~100%, 10% 단위
     % 단일 SOC에 대해 진행할 경우 단일 SOC값만 입력. 
     
-    save_path = 'C:\Users\admin\'; %파라미터 결과 저장 폴더 경로 지정 
+    save_path = 'C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\LGES_all_users'; %파라미터 결과 저장 폴더 경로 지정 
     save_check = 1; % 피규어 및 파라미터 데이터 저장 유무 선택, 0이면 결과 저장 x, 1이면 결과 저장 O
-    % 주의: 동일한 type_acf, type_dist 사용시 기존 파일 삭제 후 저장됨
+    % 주의: 동일한 폴더에 동일한 type_acf, type_dist 사용시 기존 파일 삭제 후 저장됨
 
 % EIS data path
-    path_folder = '12_6cm2_soc10_EIS # Sample 1';%불러올 데이터 폴더 경로 지정
+    path_folder = 'G:\공유 드라이브\BSL-Data\LGES\LG raw data\12_6cm2_soc10_EIS # Sample 1';%불러올 데이터 폴더 경로 지정
     path_file = 'PEIS_C09_cathode_cycle_soc%d.csv'; % soc%d 부분은 고정, 그 외의 파일 이름만 수동으로 지정 ex) 파일 이름: soc20_cathode_LGES 라면, soc%d_cathode_LGES로 지정
     %주의: 데이터 형식 변경되면 적용 불가, 파일 이름에 % 특수기호 삭제 후 진행
 
