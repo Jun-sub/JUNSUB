@@ -1,8 +1,8 @@
-
+clc, clear, close all;
 
 % assign data_path
-path_data = 'C:\Users\gmdms\Documents\MATLAB\EIS fitting\data_1.xlsx';
-
+path_data = 'C:\Users\admin\Documents\GitHub\JunSub\EIS 기본 모델\data_1.xlsx';
+addpath 'C:\Users\admin\Documents\GitHub\JS_fitting_intro'
 % load data
   data_e = importdata(path_data);
 
@@ -27,7 +27,6 @@ path_data = 'C:\Users\gmdms\Documents\MATLAB\EIS fitting\data_1.xlsx';
 
 % calculate initial guess
   Z_init = Z_model_RCW(f_e, para_init); %%f 값에 2pi 곱하지 않아도 되는건지 궁금합니다
-
 %pre-plot2
   figure(1); 
   hold on 
@@ -37,7 +36,7 @@ path_data = 'C:\Users\gmdms\Documents\MATLAB\EIS fitting\data_1.xlsx';
 %Main fitting
 
 %Cost function define
-objfunc = @(para)cost_func(z_e,f_e,para);
+objfunc = @(para)func_cost(z_e,f_e,para);
 
 %minimization
 para_hat = fmincon(objfunc,para_init,[],[],[],[],[0,0,0,0],10*para_init);
@@ -57,7 +56,7 @@ legend('experimental', 'guess','fitting');
 
 function cost = cost_func(z_e,f_e,para)
   z_mod = Z_model_RCW(f_e,para);
-  cost = sum(sqrt((real(z_e - z_mod).^2)) + sum(sqrt((imag(z_e - z_mod).^2));
+  cost = sum(sqrt((real(z_e - z_mod).^2))) + sum(sqrt((imag(z_e - z_mod).^2)));
 %%sqrt 써야 하는지
 end 
   

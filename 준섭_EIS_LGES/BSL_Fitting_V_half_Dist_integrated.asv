@@ -14,7 +14,7 @@
 
 %% Configurations
 % soc range
-    soc_vec = 30 %0:10:100;
+    soc_vec = 30; %0:10:100;
     % fitting할 soc 범위 지정, 0~100%, 10% 단위
     % 단일 SOC에 대해 진행할 경우 단일 SOC값만 입력. 
     
@@ -31,14 +31,14 @@
     type_weight = 1; % 0 for absolute error, 1 for relative error
     type_acf = 1; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
     type_dist = 1; % 0 for DRT, 1 for DDT
-    num_iter = 100; %최적화 과정 최대 반복 횟수
+    num_iter = 10; %최적화 과정 최대 반복 횟수
 
 
 %-----------------------------이 아래로는 수정 불필요-------------------------%
 
     if type_dist == 0
         dist = 'DRT';
-    elseif type_dist == 1
+    elseif type_dist == 1 
         dist = 'DDT';
     end
 
@@ -196,7 +196,7 @@ plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
     lb = factors_ini*0.1;
 
 %%  [dist] Call EIS model
-   weighted_model_dist = @(factors,f_data)BSL_func_EISmodel_V2_half_Dist(f_data, factors,soc,T,type_acf,type_dist)...
+   weighted_model_dist = @(factors,f_data)BSL_func_EISmodel_V_half_Dist_integrated(f_data, factors,soc,T,type_acf,type_dist)...
        .*weight_matrix;
    weighted_data = z_data.*weight_matrix;
 
@@ -207,7 +207,7 @@ plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
    toc;
 
  %% [dist] Plot Results
-[z_model2, paras2] = BSL_func_EISmodel_V2_half_Dist(f_data,factors_hat_dist,soc,T,type_acf,type_dist);
+[z_model2, paras2] = BSL_func_EISmodel_V_half_Dist_integrated(f_data,factors_hat_dist,soc,T,type_acf,type_dist);
 fprintf(['P2D + ' dist ' fitting has successfully completed \n'])
 % Nyquist Plot
 figure(4)

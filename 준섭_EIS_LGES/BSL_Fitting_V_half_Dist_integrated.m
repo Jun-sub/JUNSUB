@@ -14,7 +14,7 @@
 
 %% Configurations
 % soc range
-    soc_vec = 30 %0:10:100;
+    soc_vec = 20; %0:10:100;
     % fitting할 soc 범위 지정, 0~100%, 10% 단위
     % 단일 SOC에 대해 진행할 경우 단일 SOC값만 입력. 
     
@@ -30,7 +30,7 @@
 % Fitting configuration
     type_weight = 1; % 0 for absolute error, 1 for relative error
     type_acf = 1; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
-    type_dist = 1; % 0 for DRT, 1 for DDT
+    type_dist = 2; % 0 for DRT, 1 for DDT, 2 for integrated
     num_iter = 100; %최적화 과정 최대 반복 횟수
 
 
@@ -38,8 +38,10 @@
 
     if type_dist == 0
         dist = 'DRT';
-    elseif type_dist == 1
+    elseif type_dist == 1 
         dist = 'DDT';
+    elseif type_dist == 2
+        dist = 'DRT + DDT'
     end
 
 
@@ -196,7 +198,7 @@ plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
     lb = factors_ini*0.1;
 
 %%  [dist] Call EIS model
-   weighted_model_dist = @(factors,f_data)BSL_func_EISmodel_V2_half_Dist(f_data, factors,soc,T,type_acf,type_dist)...
+   weighted_model_dist = @(factors,f_data)BSL_func_EISmodel_V_half_Dist_integrated(f_data, factors,soc,T,type_acf,type_dist)...
        .*weight_matrix;
    weighted_data = z_data.*weight_matrix;
 
@@ -207,7 +209,7 @@ plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
    toc;
 
  %% [dist] Plot Results
-[z_model2, paras2] = BSL_func_EISmodel_V2_half_Dist(f_data,factors_hat_dist,soc,T,type_acf,type_dist);
+[z_model2, paras2] = BSL_func_EISmodel_V_half_Dist_integrated(f_data,factors_hat_dist,soc,T,type_acf,type_dist);
 fprintf(['P2D + ' dist ' fitting has successfully completed \n'])
 % Nyquist Plot
 figure(4)
@@ -252,6 +254,99 @@ legend('Exp Data','P2D',['P2D' '+' dist])
 hold off;
 
 set(gcf,'position',[600 600 1000 500])
+
+
+
+
+%-------------------DRT --> DDT test
+%% Fitting Improvement by Distributed models.
+%     fprintf(['Start P2D + ' dist ' fitting \n'])
+%     % [dist] Initial guess and bounds
+%     std_ini = 0.5;
+%     factors_ini = factors_hat_dist;
+% 
+%     type_dist = 1;
+%     ub = factors_ini*10;
+%     lb = factors_ini*0.1;
+% 
+%  if type_dist == 0
+%         dist = 'DRT';
+%     elseif type_dist == 1 
+%         dist = 'DDT';
+%     end
+% 
+% 
+%     if type_acf == 1
+%         cell_type = 'Anode';
+%     elseif type_acf == 2
+%         cell_type = 'Cathode';
+%     elseif type_acf == 3
+%         cell_type = 'Full'; %현재 코드에선 구현 X
+%     end 
+% %%  [dist] Call EIS model
+%    weighted_model_dist = @(factors,f_data)BSL_func_EISmodel_V_half_Dist_integrated(f_data, factors,soc,T,type_acf,type_dist)...
+%        .*weight_matrix;
+%    weighted_data = z_data.*weight_matrix;
+% 
+%    tic;
+%    [factors_hat_integ, resnorm,residual,~,~,~,jacobian_hat] ...
+%         = lsqcurvefit(weighted_model_dist,factors_ini,...
+%                       f_data,weighted_data, lb, ub, options);
+%    toc;
+% 
+%  %% [dist] Plot Results
+% [z_model3, paras3] = BSL_func_EISmodel_V_half_Dist_integrated(f_data,factors_hat_integ,soc,T,type_acf,type_dist);
+% z_model4 = z_model2 + z_model3;
+% z_model4(:,1) = z_model4(:,1) - paras2(1);
+% fprintf(['P2D + ' dist ' fitting has successfully completed \n'])
+% % Nyquist Plot
+% figure(5)
+% t = tiledlayout(1,2,"TileSpacing","compact",'Padding','compact');
+% nexttile
+% plot(z_data(:,1),-z_data(:,2),'ok','linewidth',1); hold on
+% plot(z_model2(:,1),-z_model2(:,2),'or','linewidth',1)
+% plot(z_model4(:,1),-z_model4(:,2),'o','linewidth',1,'Color',[0.3010 0.7450 0.9330])
+% 
+% legend('Exp Data','P2D + DRT',['P2D' '+ DRT + ' dist])
+% axis_limit = 1.1*max(max(abs(z_data)));
+%     set(gca,'Box','on',... %Axis Properties: BOX   
+%     'PlotBoxAspectRatio',[1 1 1],... % Size - you can either use 'position' or 'dataaspectratio' or their combinations
+%     'FontUnits','points','FontSize',10,'FontName','Times New Roman',... % Fonts
+%     'XLim',[0 axis_limit],'Ylim',[0 axis_limit])
+% 
+%     grid on;
+%     title([cell_type ' soc' num2str(SOC) ' P2D' ' + ' dist])
+%     xlabel('Z_{re} [Ohm]')
+%     ylabel('-Z_{im} [Ohm]')
+% hold off
+% 
+% 
+% % Zoom-in semicircle
+% nexttile
+% plot(z_data(:,1),-z_data(:,2),'ok','linewidth',1); hold on
+% plot(z_model2(:,1),-z_model2(:,2),'or','linewidth',1)
+% plot(z_model4(:,1),-z_model4(:,2),'o','linewidth',1,'Color',[0.3010 0.7450 0.9330])
+% legend('Exp Data','P2D + DRT',['P2D' '+ DRT + ' dist])
+%  f_zoom_lb = 10; %[Hz] 
+%     idx_zoom = f_data>f_zoom_lb;
+%     axis_limit = 1.1*max(max(abs(z_data(idx_zoom,:))));
+%     set(gca,'Box','on',... %Axis Properties: BOX   
+%     'PlotBoxAspectRatio',[1 1 1],... % Size - you can either use 'position' or 'dataaspectratio' or their combinations
+%     'FontUnits','points','FontSize',10,'FontName','Times New Roman',... % Fonts
+%     'XLim',[0 axis_limit],'Ylim',[0 axis_limit])
+% 
+%     grid on;
+%     title([cell_type ' soc' num2str(SOC) ' P2D' ' + ' dist ' Zoom-in'])
+%     xlabel('Z_{re} [Ohm]')
+%     ylabel('-Z_{im} [Ohm]')
+% hold off;
+% 
+% set(gcf,'position',[600 600 1000 500])
+
+
+%-----------------------end 
+
+
 %% Result Summary
    
 Result.factors_hat = factors_hat;
