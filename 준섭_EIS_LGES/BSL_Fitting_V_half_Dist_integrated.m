@@ -14,7 +14,7 @@
 
 %% Configurations
 % soc range
-    soc_vec = 30; %0:10:100;
+    soc_vec = 80; %0:10:100;
     % fitting할 soc 범위 지정, 0~100%, 10% 단위
     % 단일 SOC에 대해 진행할 경우 단일 SOC값만 입력. 
     
@@ -30,8 +30,8 @@
 % Fitting configuration
     type_weight = 1; % 0 for absolute error, 1 for relative error
     type_acf = 1; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
-    type_dist = 2; % 0 for DRT, 1 for DDT, 2 for integrated
-    num_iter = 30; %최적화 과정 최대 반복 횟수
+    type_dist = 1; % 0 for DRT, 1 for DDT, 2 for integrated
+    num_iter = 1; %최적화 과정 최대 반복 횟수
 
 
 %-----------------------------이 아래로는 수정 불필요-------------------------%
@@ -149,6 +149,8 @@ fprintf('Start P2D fitting \n')
 fprintf('P2D fitting has successfully completed \n')
 % Nyquist Plot
 figure(2)
+t = tiledlayout(1,2,"TileSpacing","compact",'Padding','compact');
+nexttile
 plot(z_data(:,1),-z_data(:,2),'ok','linewidth',1); hold on
 %plot(z_model0(:,1),-z_model0(:,2),'ob','linewidth',1)
 plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
@@ -162,12 +164,13 @@ hold off;
     'FontUnits','points','FontSize',10,'FontName','Times New Roman',... % Fonts
     'XLim',[0 axis_limit],'Ylim',[0 axis_limit])
 %    hold off
+    grid on;    
     xlabel('Z_{re} [Ohm]')
     ylabel('-Z_{im} [Ohm]')
-
+    legend('Exp Data','P2D')
 
 % Zoom-in semicircle
-figure(3)
+nexttile
 plot(z_data(:,1),-z_data(:,2),'ok','linewidth',1); hold on
 %plot(z_model0(:,1),-z_model0(:,2),'ob','linewidth',1)
 plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
@@ -182,12 +185,13 @@ plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
     'FontUnits','points','FontSize',10,'FontName','Times New Roman',... % Fonts
     'XLim',[0 axis_limit],'Ylim',[0 axis_limit])
      hold off
+     grid on;
      xlabel('Z_{re} [Ohm]')
      ylabel('-Z_{im} [Ohm]')
-
+     legend('Exp Data','P2D')
     
-
-
+    set(gcf,'position',[400 600 1000 500])
+    pause(0.1) %for check P2D figure
 %% Fitting Improvement by Distributed models.
     fprintf(['Start P2D + ' dist ' fitting \n'])
     % [dist] Initial guess and bounds
@@ -253,7 +257,7 @@ legend('Exp Data','P2D',['P2D' '+' dist])
     ylabel('-Z_{im} [Ohm]')
 hold off;
 
-set(gcf,'position',[600 600 1000 500])
+set(gcf,'position',[1400 600 1000 500])
 
 
 
