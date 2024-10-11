@@ -8,15 +8,15 @@ R0 = 3;
 
 C1 = 10^-3;
 R1 = 10;
-A1 = 1.2;
+A1 = 0;
 
 C2 = 10^-2;
 R2 = 20;
-A2 = 1.3;
+A2 = 0;
 
 C3 = 10^-1;
 R3 = 30;
-A3 = 1.4;
+A3 = 0;
 
 
 %% Randle
@@ -36,7 +36,7 @@ Z_RW3 = R3 + Z_W3;
 Z_C3 = 1 ./ (1i*w*C3);
 
 %Total impedance
-Z1 = R0 + (Z_RW1 .* Z_C1) ./ (Z_RW1 + Z_C1) + (Z_RW2 .* Z_C2) ./ (Z_RW2 + Z_C2) + (Z_RW2 .* Z_C2) ./ (Z_RW2 + Z_C2);
+Z1 = R0 + (Z_RW1 .* Z_C1) ./ (Z_RW1 + Z_C1) + (Z_RW2 .* Z_C2) ./ (Z_RW2 + Z_C2) + (Z_RW3 .* Z_C3) ./ (Z_RW3 + Z_C3);
 
 %Plot
 figure(1); hold on;

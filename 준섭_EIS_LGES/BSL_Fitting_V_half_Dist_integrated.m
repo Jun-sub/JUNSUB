@@ -30,8 +30,8 @@
 % Fitting configuration
     type_weight = 1; % 0 for absolute error, 1 for relative error
     type_acf = 1; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
-    type_dist = 2; % 0 for DRT, 1 for DDT, 2 for integrated
-    num_iter = 100; %최적화 과정 최대 반복 횟수
+    type_dist = 1; % 0 for DRT, 1 for DDT, 2 for integrated
+    num_iter = 5; %최적화 과정 최대 반복 횟수
 
 
 %-----------------------------이 아래로는 수정 불필요-------------------------%

@@ -16,7 +16,20 @@ R_itsc = factors(1)*0.0755; % [Ohm] % LGES 2024 02
 
 addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
 
+if type_dist == 0 || type_dist == 1
+    iter = 1;
+elseif type_dist == 2
+    iter = 2;
+end 
 
+for n = 1:iter
+    
+    if type_dist == 0 || type_dist == 1
+    type_dist = type_dist;
+    elseif type_dist == 2
+    type_dist = n-1;
+    end
+    
 %% Thernodynamic Configs
 
 % SOC and stoic 
@@ -111,10 +124,10 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
 %% Calculation
 
 % initialization matrix
-c_imp = zeros(1,N);
-a_imp = zeros(1,N);
-s_imp = zeros(1,N);
-fc_imp = zeros(1,N);  
+c_imp(n,:) = zeros(1,N);
+a_imp(n,:) = zeros(1,N);
+s_imp(n,:) = zeros(1,N);
+fc_imp(n,:) = zeros(1,N);  
 
 
 for k = 1:N
@@ -259,6 +272,14 @@ fc_imp(k) = -(phi1x1c-phi1x1a)/iapp;
 %Meyers(k)=1/beta/F;
 end
 
+end %iter
+
+if  type_dist == 2
+    c_imp = sum(c_imp);
+    a_imp = sum(a_imp);
+    s_imp = sum(s_imp);
+    fc_imp = sum(fc_imp);  
+end
 % toc;
 % w_vector = omegagen/(2*pi()); % into [Hz] from [rad] [v6] - taking from input
 %cathode = cathode_impedance(1:N);
@@ -327,8 +348,7 @@ elseif type_acf ==3 % full cell
 else
     error('select anode (1), cathode (2), full cell (3)')
 end
-
-
+ 
 
 end
 
@@ -343,14 +363,6 @@ function beta = beta_func(para,type_dist) % LGES V2 2024 05
             upper_func = @(t)lognpdf(t,para(10),para(11)).*yloc_func_ddt(t,para); upper = integral(upper_func,0.001,100);
             down_func = @(t)lognpdf(t,para(10),para(11)); down = integral(down_func,0.001,100);
             beta = upper./down/para(4);
-        elseif type_dist == 2 % integrated
-            upper_func_drt = @(t)lognpdf(t,para(10),para(11)).*zloc_func_drt(t,para); upper_drt = integral(upper_func_drt,0.001,100);
-            down_func_drt = @(t)lognpdf(t,para(10),para(11)); down_drt = integral(down_func_drt,0.001,100);
-
-            upper_func_ddt = @(t)lognpdf(t,para(10),para(11)).*yloc_func_ddt(t,para); upper_ddt = integral(upper_func_ddt,0.001,100);
-            down_func_ddt = @(t)lognpdf(t,para(10),para(11)); down_ddt = integral(down_func_ddt,0.001,100);
-
-            beta = (upper_drt./down_drt)^-1/para(4) + upper_ddt./down_ddt/para(4);
         end
 
     else
