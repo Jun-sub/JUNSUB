@@ -24,9 +24,9 @@ end
 
 for n = 1:iter
     
-    if type_dist == 0 || type_dist == 1
+    if iter == 1
     type_dist = type_dist;
-    elseif type_dist == 2
+    elseif iter == 2
     type_dist = n-1;
     end
     
@@ -253,10 +253,10 @@ phi1x1a = - La^3*aa*F*betaa/sigmaeffa^2*((sa-lambda1a)*C_1_a/B1a/lambda1a+(sa-la
 
 %------------Overall Cell Potential Drop (Sandwich)------------------------
 
-c_imp(k) = -(phi1x1c-phi2_sep_xs_1)/iapp;
-a_imp(k) = -(phi2_sep_xs_0-phi1x1a)/iapp;
-s_imp(k) = -(phi2_sep_xs_1-phi2_sep_xs_0)/iapp;
-fc_imp(k) = -(phi1x1c-phi1x1a)/iapp;
+c_imp(n,k) = -(phi1x1c-phi2_sep_xs_1)/iapp;
+a_imp(n,k) = -(phi2_sep_xs_0-phi1x1a)/iapp;
+s_imp(n,k) = -(phi2_sep_xs_1-phi2_sep_xs_0)/iapp;
+fc_imp(n,k) = -(phi1x1c-phi1x1a)/iapp;
 
 %cell_potentiala (k) = Zc;
 %cell_potentialb(k) = -phi1x1a;
@@ -274,7 +274,7 @@ end
 
 end %iter
 
-if  type_dist == 2
+if  iter == 2
     c_imp = sum(c_imp);
     a_imp = sum(a_imp);
     s_imp = sum(s_imp);
