@@ -16,19 +16,6 @@ R_itsc = factors(1)*0.0755; % [Ohm] % LGES 2024 02
 
 addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
 
-if type_dist == 0 || type_dist == 1
-    iter = 1;
-elseif type_dist == 2
-    iter = 2;
-end 
-
-for n = 1:iter
-    
-    if iter == 1
-    type_dist = type_dist;
-    elseif iter == 2
-    type_dist = n-1;
-    end
     
 %% Thernodynamic Configs
 
@@ -57,11 +44,15 @@ for n = 1:iter
     kc = factors(2)*kc_function(y,T,ctc); % {modified}
     c_e_ref = 1000; % {modified} [mol/m3] reference concetration of electrolyte
 
-    % Distribution parameters % LGES V2 2024 05 % HERE - ADD FACTORS
-    mean_ra = 1;                        mean_rc = 1;
-    std_ra = factors(end);                       std_rc = factors(end);      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
-    [mu_ra,sig_ra] = normal_para(mean_ra,std_ra); [mu_rc,sig_rc] = normal_para(mean_rc,std_rc); % converting them to parameters of underlying normal distribution
+    % DRT Distribution parameters % LGES V2 2024 05 % HERE - ADD FACTORS
+    mean_drt_ra = 1;                        mean_drt_rc = 1;
+    std_drt_ra = factors(end-1);                       std_drt_rc = factors(end);      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
+    [mu_drt_ra,sig_drt_ra] = normal_para(mean_drt_ra,std_drt_ra); [mu_drt_rc,sig_drt_rc] = normal_para(mean_drt_rc,std_drt_rc); % converting them to parameters of underlying normal distribution
 
+    % DDT Distribution parameters % LGES V2 2024 05 % HERE - ADD FACTORS
+    mean_ddt_ra = 1;                        mean_ddt_rc = 1;
+    std_ddt_ra = factors(end);                       std_ddt_rc = factors(end);      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
+    [mu_ddt_ra,sig_ddt_ra] = normal_para(mean_ddt_ra,std_ddt_ra); [mu_ddt_rc,sig_ddt_rc] = normal_para(mean_ddt_rc,std_ddt_rc); % converting them to parameters of underlying normal distribution
 
     % Porous electrode
     La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
@@ -124,10 +115,10 @@ for n = 1:iter
 %% Calculation
 
 % initialization matrix
-c_imp(n,:) = zeros(1,N);
-a_imp(n,:) = zeros(1,N);
-s_imp(n,:) = zeros(1,N);
-fc_imp(n,:) = zeros(1,N);  
+c_imp = zeros(1,N);
+a_imp = zeros(1,N);
+s_imp = zeros(1,N);
+fc_imp = zeros(1,N);  
 
 
 for k = 1:N
@@ -149,8 +140,8 @@ spc=1i*omegagen(k);      %   s2c                 %[refer to list of symbols]
 Rcta=R*T/i0a/F/(alphaa+alphac);                 %[refer to list of symbols]        
 Rctc=R*T/i0c/F/(alphaa+alphac);                 %[refer to list of symbols]        
 
-paraa = [dUdca,Rpa,Dsa,F,spa,Cdla,Rcta,C_filma,Rfa,mu_ra,sig_ra]; % LGES V2 2024 05
-parac = [dUdcc,Rpc,Dsc,F,spc,Cdlc,Rctc,C_filmc,Rfc,mu_rc,sig_rc]; % LGES V2 2024 05
+paraa = [dUdca,Rpa,Dsa,F,spa,Cdla,Rcta,C_filma,Rfa,mu_drt_ra,sig_drt_ra,mu_ddt_ra,sig_ddt_ra]; % LGES V2 2024 05
+parac = [dUdcc,Rpc,Dsc,F,spc,Cdlc,Rctc,C_filmc,Rfc,mu_drt_rc,sig_drt_rc,mu_ddt_rc,sig_ddt_rc]; % LGES V2 2024 05
 
 betaa = beta_func(paraa,type_dist); % LGES V2 2024 05
 betac = beta_func(parac,type_dist); % LGES V2 2024 05
@@ -253,7 +244,7 @@ phi1x1a = - La^3*aa*F*betaa/sigmaeffa^2*((sa-lambda1a)*C_1_a/B1a/lambda1a+(sa-la
 
 %------------Overall Cell Potential Drop (Sandwich)------------------------
 
-c_imp(n,k) = -(phi1x1c-phi2_sep_xs_1)/iapp;
+c_imp(k) = -(phi1x1c-phi2_sep_xs_1)/iapp;
 a_imp(k) = -(phi2_sep_xs_0-phi1x1a)/iapp;
 s_imp(k) = -(phi2_sep_xs_1-phi2_sep_xs_0)/iapp;
 fc_imp(k) = -(phi1x1c-phi1x1a)/iapp;
@@ -272,14 +263,7 @@ fc_imp(k) = -(phi1x1c-phi1x1a)/iapp;
 %Meyers(k)=1/beta/F;
 end
 
-end %iter
 
-if  iter == 2
-    c_imp = sum(c_imp);
-    a_imp = sum(a_imp);
-    s_imp = sum(s_imp);
-    fc_imp = sum(fc_imp);  
-end
 % toc;
 % w_vector = omegagen/(2*pi()); % into [Hz] from [rad] [v6] - taking from input
 %cathode = cathode_impedance(1:N);
@@ -327,10 +311,16 @@ hold on
 plot(real(c_imp(1:N)+a_imp(1:N)+s_imp(1:N))*1e4,-imag(c_imp(1:N)+a_imp(1:N)+s_imp(1:N))*1e4,'bo')
 %}
 
-assignin("base","mu_rc",mu_rc);
-assignin("base","mu_ra",mu_ra);
-assignin("base","sig_rc",sig_rc);
-assignin("base","sig_ra",sig_ra);
+assignin("base","mu_drt_rc",mu_drt_rc);
+assignin("base","mu_drt_ra",mu_drt_ra);
+assignin("base","sig_drt_rc",sig_drt_rc);
+assignin("base","sig_drt_ra",sig_drt_ra);
+
+assignin("base","mu_ddt_rc",mu_ddt_rc);
+assignin("base","mu_ddt_ra",mu_ddt_ra);
+assignin("base","sig_ddt_rc",sig_ddt_rc);
+assignin("base","sig_ddt_ra",sig_ddt_ra);
+
 %% Output data - changed for fitting
 
 % output = [w_vector.', fc_imp.', c_imp.', a_imp.', s_imp.'];
@@ -338,10 +328,10 @@ assignin("base","sig_ra",sig_ra);
  
 if type_acf ==1 % anode
     output = [R_itsc+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.')];
-    paras =[R_itsc, i0a, Cdla, Dsa, kappa, Di0, aa, std_ra]';
+    paras =[R_itsc, i0a, Cdla, Dsa, kappa, Di0, aa, std_drt_ra,std_ddt_ra]';
 elseif type_acf ==2 % cathode
     output = [R_itsc+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
-    paras =[R_itsc, i0c, Cdlc, Dsc, kappa, Di0, ac, std_rc]';
+    paras =[R_itsc, i0c, Cdlc, Dsc, kappa, Di0, ac, std_drt_rc,std_ddt_rc]';
 elseif type_acf ==3 % full cell
     error('not ready for full cell fitting yet')
     %output = [R_itsc+(1/A_coat)*real(fc_imp.'),(1/A_coat)*imag(fc_imp.')];
@@ -353,48 +343,94 @@ end
 end
 
 function beta = beta_func(para,type_dist) % LGES V2 2024 05
-% para = [dUdc,Rp,Ds,F,sp,Cdl,Rct,C_film,Rf,mu,sig]
+% para = [dUdc,Rp,Ds,F,sp,Cdl,Rct,C_film,Rf,mu_drt,sig_drt,mu_ddt,sig_ddt]
     if para(11) > 0.001
         if type_dist == 0 % drt
-            upper_func = @(t)lognpdf(t,para(10),para(11)).*zloc_func_drt(t,para); upper = integral(upper_func,0.001,100);
+            upper_func = @(t)lognpdf(t,para(10),para(11)).*zloc_func_drt(t,para,type_dist); upper = integral(upper_func,0.001,100);
             down_func = @(t)lognpdf(t,para(10),para(11)); down = integral(down_func,0.001,100);
             beta = (upper./down)^-1/para(4);
         elseif type_dist == 1 % ddt
-            upper_func = @(t)lognpdf(t,para(10),para(11)).*yloc_func_ddt(t,para); upper = integral(upper_func,0.001,100);
-            down_func = @(t)lognpdf(t,para(10),para(11)); down = integral(down_func,0.001,100);
+            upper_func = @(t)lognpdf(t,para(12),para(13)).*yloc_func_ddt(t,para,type_dist); upper = integral(upper_func,0.001,100);
+            down_func = @(t)lognpdf(t,para(12),para(13)); down = integral(down_func,0.001,100);
             beta = upper./down/para(4);
-        end
+        elseif type_dist == 2 % Integrated
+            upper_func_drt = @(t1)lognpdf(t1,para(10),para(11)).*zloc_func_drt(t1,para,type_dist); upper_drt = integral(upper_func_drt,0.001,100);
+            down_func_drt = @(t1)lognpdf(t1,para(10),para(11)); down_drt = integral(down_func_drt,0.001,100);
 
+            upper_func_ddt = @(t2)lognpdf(t2,para(12),para(13)).*yloc_func_ddt(t2,para,type_dist); upper_ddt = integral(upper_func_ddt,0.001,100);
+            down_func_ddt = @(t2)lognpdf(t2,para(12),para(13)); down_ddt = integral(down_func_ddt,0.001,100);
+
+
+            % test
+            upper_func_p2d = @(t3)lognpdf(t3,para(12),para(13)).*zloc_func_p2d(t3,para,type_dist); upper_p2d = integral(upper_func_p2d,0.001,100);
+            down_func_p2d = @(t3)lognpdf(t3,para(12),para(13)); down_p2d = integral(down_func_p2d,0.001,100);
+            % test
+
+            beta_drt = (upper_drt./down_drt)^-1/para(4);
+            beta_ddt = upper_ddt./down_ddt/para(4); 
+            beta_p2d = (upper_p2d./down_p2d)^-1/para(4);
+            beta = beta_drt + beta_ddt;
+        end
     else
         beta = yloc_func_ddt(1,para)/para(4);
     end
 end
 
-function yloc = yloc_func_ddt(t,para) % LGES V2 2024 05
-% para = [dUdc,Rp,Ds,F,sp,Cdl,Rct,C_film,Rf,mu,sig]; 
-
-% Rdif=-dUdc*Rp/Ds/F;
-Rdif = - para(1)*para(2)/para(3)/para(4);
-% Ys=(sqrt(sp*Rp^2/Ds)-tanh(sqrt(sp*Rp^2/Ds)))/tanh(sqrt(sp*Rp^2/Ds))
-Ys=(sqrt(para(5)*t*(para(2)).^2/para(3))-tanh(sqrt(para(5)*t*(para(2)).^2/para(3))))./tanh(sqrt(para(5)*t*(para(2)).^2/para(3)));  
-% zeta = sp*Cdl + 1/(Rct+Rdif/Ys);          %[Eqn [9] in the paper]
-zeta = 1./(Rdif./Ys);          %[Eqn [9] in the paper]
-
-%New Beta based on Meyers Case 2
-yloc = para(5)*para(8) + 1./(1./zeta+para(9));  % edit -GS  [Eqn[8] in the paper]
-
-end
-
-
-function zloc = zloc_func_drt(t,para) % LGES V2 2024 05
-% para = [dUdc,Rp,Ds,F,sp,Cdl,Rct,C_film,Rf,mu,sig]; 
+%----test start
+function zloc = zloc_func_p2d(t,para,type_dist) % LGES V2 2024 05
+% para = [dUdc,Rp,Ds,F,sp,Cdl,Rct,C_film,Rf,mu_drt,sig_drt,mu_ddt,sig_ddt]; 
 
 % Rdif=-dUdc*Rp/Ds/F;
 Rdif = - para(1)*para(2)/para(3)/para(4);
 % Ys=(sqrt(sp*Rp^2/Ds)-tanh(sqrt(sp*Rp^2/Ds)))/tanh(sqrt(sp*Rp^2/Ds))
 Ys=(sqrt(para(5)*(para(2)).^2/para(3))-tanh(sqrt(para(5)*(para(2)).^2/para(3))))./tanh(sqrt(para(5)*(para(2)).^2/para(3)));  
 % zeta = sp*Cdl + 1/(Rct+Rdif/Ys);          %[Eqn [9] in the paper]
-zeta = para(5)*para(6)*t + 1./para(7);          %[Eqn [9] in the paper] omit Rdif
+
+
+zeta = para(5)*para(6) + 1./(para(7)+Rdif./Ys);
+
+
+%New Beta based on Meyers Case 2
+yloc = para(5)*para(8) + 1./(1./zeta+para(9));  % edit -GS  [Eqn[8] in the paper]
+
+zloc = yloc.^-1;
+end
+%----- test end
+
+function zloc = zloc_func_drt(t,para,type_dist) % LGES V2 2024 05
+% para = [dUdc,Rp,Ds,F,sp,Cdl,Rct,C_film,Rf,mu_drt,sig_drt,mu_ddt,sig_ddt]; 
+
+% Rdif=-dUdc*Rp/Ds/F;
+
+Rdif = - para(1)*para(2)/para(3)/para(4);
+% Ys=(sqrt(sp*Rp^2/Ds)-tanh(sqrt(sp*Rp^2/Ds)))/tanh(sqrt(sp*Rp^2/Ds))
+Ys=(sqrt(para(5)*(para(2)).^2/para(3))-tanh(sqrt(para(5)*(para(2)).^2/para(3))))./tanh(sqrt(para(5)*(para(2)).^2/para(3)));  
+% zeta = sp*Cdl + 1/(Rct+Rdif/Ys);          %[Eqn [9] in the paper]
+
+if type_dist == 0
+zeta = para(5)*para(6)*t + 1./(para(7)+Rdif./Ys); %[Eqn [9] in the paper]
+elseif type_dist == 2
+% zeta = para(5)*para(6)*t + 1./para(7);          %[Eqn [9] in the paper] omit Rdif
+zeta = para(5)*para(6)*t + 1./(para(7)+Rdif./Ys);
+end 
+
+
+function zloc = zloc_func_drt(t,para,type_dist) % LGES V2 2024 05
+% para = [dUdc,Rp,Ds,F,sp,Cdl,Rct,C_film,Rf,mu_drt,sig_drt,mu_ddt,sig_ddt]; 
+
+% Rdif=-dUdc*Rp/Ds/F;
+
+Rdif = - para(1)*para(2)/para(3)/para(4);
+% Ys=(sqrt(sp*Rp^2/Ds)-tanh(sqrt(sp*Rp^2/Ds)))/tanh(sqrt(sp*Rp^2/Ds))
+Ys=(sqrt(para(5)*(para(2)).^2/para(3))-tanh(sqrt(para(5)*(para(2)).^2/para(3))))./tanh(sqrt(para(5)*(para(2)).^2/para(3)));  
+% zeta = sp*Cdl + 1/(Rct+Rdif/Ys);          %[Eqn [9] in the paper]
+
+if type_dist == 0
+zeta = para(5)*para(6)*t + 1./(para(7)+Rdif./Ys); %[Eqn [9] in the paper]
+elseif type_dist == 2
+% zeta = para(5)*para(6)*t + 1./para(7);          %[Eqn [9] in the paper] omit Rdif
+zeta = para(5)*para(6)*t + 1./(para(7)+Rdif./Ys);
+end 
 
 %New Beta based on Meyers Case 2
 yloc = para(5)*para(8) + 1./(1./zeta+para(9));  % edit -GS  [Eqn[8] in the paper]

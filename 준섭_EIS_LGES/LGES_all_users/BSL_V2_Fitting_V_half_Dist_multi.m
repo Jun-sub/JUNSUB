@@ -24,13 +24,13 @@
 
 % EIS data path
     path_folder = 'G:\공유 드라이브\BSL-Data\LGES\LG raw data\12_6cm2_soc10_EIS # Sample 1';%불러올 데이터 폴더 경로 지정
-    path_file = 'PEIS_C09_cathode_cycle_soc%d.csv'; % soc%d 부분은 고정, 그 외의 파일 이름만 수동으로 지정 ex) 파일 이름: soc20_cathode_LGES 라면, soc%d_cathode_LGES로 지정
+    path_file = 'PEIS_C09_anode_cycle_soc%d.csv'; % soc%d 부분은 고정, 그 외의 파일 이름만 수동으로 지정 ex) 파일 이름: soc20_cathode_LGES 라면, soc%d_cathode_LGES로 지정
     %주의: 데이터 형식 변경되면 적용 불가, 파일 이름에 % 특수기호 삭제 후 진행
 
 % Fitting configuration
     type_weight = 1; % 0 for absolute error, 1 for relative error
     type_acf = 1; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
-    type_dist = 1; % 0 for DRT, 1 for DDT
+    type_dist = 0; % 0 for DRT, 1 for DDT
     num_iter = 100; %최적화 과정 최대 반복 횟수
 
 

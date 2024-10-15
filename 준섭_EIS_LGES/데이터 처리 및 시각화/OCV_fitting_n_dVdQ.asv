@@ -48,21 +48,19 @@ ocpn = interp1(x_raw,ocpn_mva,x);
 ocpn = [x ocpn]; %movmean ocpn inter1 한 데이터
 
 clear x_raw x ocpn_raw ocpn_mva
-
 %ocpp
 ocpp = load([folder filesep filename_ocpp]);
 ocpp_raw = ocpp.OCV_golden.(['OCV' p_direc]);
 
-y_raw = ocpp_raw(:,1); %soc of ocpp
-y = linspace(min(y_raw),max(y_raw),n_points)'; %soc n_points만큼 나눠서 표현
-ocpp_raw = ocpp_raw(:,2); %ocpn
-ocpp_mva = movmean(ocpp_raw,round(length(ocpp_raw)/n_points)); %smoothed ocpn
-ocpp = interp1(y_raw,ocpp_mva,y);
+y_raw = ocpp_raw(:,1); %soc of ocpn
+y = linspace(min(x_raw),max(x_raw),n_points)'; %soc n_points만큼 나눠서 표현
+ocpn_raw = ocpn_raw(:,2); %ocpn
+ocpn_mva = movmean(ocpn_raw,round(length(ocpn_raw)/n_points)); %smoothed ocpn
+ocpn = interp1(x_raw,ocpn_mva,x);
 
-ocpp = [y ocpp]; %movmean ocpp inter1 한 데이터
+ocpn = [x ocpn]; %movmean ocpn inter1 한 데이터
 
-clear y_raw y ocpp_raw ocpp_mva
-
+clear x_raw x ocpn_raw ocpn_mva
 %ocv
 ocv = load([folder filesep filename_ocv]);
 ocv_raw = ocv.OCV_golden.(['OCV' p_direc]);
