@@ -1,27 +1,36 @@
-function [output,paras] = BSL_func_EISmodel_V1_3E_Sum(f_vector,factors,soc,T,type_acf)
+function [output,paras] = BSL_func_EISmodel_V_3E_Dist_integrated(f_vector,factors,soc,T,type_acf,type_dist,soc_integ)
 
 % Notes: 			This is an analytical model to predict the EIS for a full cell with intercalation based electrodes, separated by an ion conducting separator. The numerical equivalent was developed in COMSOL and compared to
 % 					the analytical model in J. Electrochem. Soc. 2007 volume 154, issue 1,A43-A54 
 % [corrected] 2008 papaer, Eqn 31: the first large parenthesis should have a negtive sign
 
+
 % This version is based on JS_EIS_model_V6
-% 3E: is only for fitting both anode and cathode
 
 omegagen= f_vector*(2*pi()); % frequency vector in [rad]
 N = length(omegagen);% [v6]-taking from the input
 
+plateau1_start = 0.07; %for dUdca plateau setting
+plateau1_end = 0.15;
+
+plateau2_start = 0.18;
+plateau2_end = 0.50;
+
+plateau3_start = 0.51;
+plateau3_end = 0.98;
+
 %
-A_coat = 12.6*2/10000; % % [m2] % LGES 2024 02 %양극 전극이 코팅된 면적 m^2 단위로 나타냄.
-R_itsc_n = factors(1)*0.0755; % [Ohm] % LGES 2024 02, 05 3E %Rn에 0.0755왜 곱하는건지 모르겠음.
-R_itsc_p = factors(6)*0.0755; % [Ohm] % LGES 2024 05 3E % Rp에도 마찬가지 
+A_coat = 12.6*2/10000; % % [m2] % LGES 2024 02
+R_itsc_n = factors(1)*0.0755; % [Ohm] % LGES 2024 02, 05 3E 
+R_itsc_p = factors(6)*0.0755; % [Ohm] % LGES 2024 05 3E 
 
-addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
+addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\interpolations')
 
-
+    
 %% Thernodynamic Configs
 
 % SOC and stoic 
-    x_1 = 0.8781; % anode stoic when soc =0 %Stoi 무엇을 기준으로 설정한건지. 
+    x_1 = 0.8781; % anode stoic when soc =0
     x_0 = 0.0216; % anode stoic when soc =1
     y_0 = 0.9319; % cathode stoic when soc =0
     y_1 = 0.3532; % cathode stoic when soc =1
@@ -33,48 +42,67 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
 %% Kinetics Parameters
     
     % Particle parameters
-    Rfa = 0;                            Rfc = 0;        % {modified} [v6b - anode film *+*] [Ohm.m2] 전극 필름 저항
-    C_filma = 0;                        C_filmc = 0;    % {modified}  [v6b - anode film *+*] [F/m2] 전극 필름 캐패시턴스
-    Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, 05 3E 입자의 반지름
-    Dsa = factors(4)*Dsa_function(x,T);      Dsc = factors(9)*Dsc_function(y,T); % {modified} [m^2/sec], 05 3E      고체 확산 계수
-    Cdla =  factors(3)*0.2;             Cdlc = factors(8)*0.2;             % [F/m2]     , 05 3E 입자 표면 이중층 캐패시턴스
-    cta = 29626;                        ctc = 48786;            % [mol/m3] 최대 농도
+    Rfa = 0;                            Rfc = 0;        % {modified} [v6b - anode film *+*] [Ohm.m2]
+    C_filma = 0;                        C_filmc = 0;    % {modified}  [v6b - anode film *+*] [F/m2]
+    Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02
+    Dsa = factors(4)*Dsa_function(x,T);      Dsc = factors(9)*Dsc_function(y,T); % {modified} [m^2/sec]      
+    Cdla =  factors(3)*0.2;             Cdlc = factors(8)*0.2;             % [F/m2]     
+    cta = 29626;                        ctc = 48786;            % [mol/m3]
 
     % Exchange current density
-    ka = factors(2)*ka_function(x,T,cta); % {modified} 교환 전류 밀도 (i0*ka), SOC 범위에서 Ka계산.
-    kc = factors(7)*kc_function(y,T,ctc); % {modified}, 05 3E 비표면적
+    ka = factors(2)*ka_function(x,T,cta); % {modified}
+    kc = factors(7)*kc_function(y,T,ctc); % {modified}
     c_e_ref = 1000; % {modified} [mol/m3] reference concetration of electrolyte
 
+    % DRT Distribution parameters % LGES V2 2024 05 % HERE - ADD FACTORS
+    mean_drt_ra = 1;                        mean_drt_rc = 1;
+    std_drt_ra = factors(13);                       std_drt_rc = factors(14);      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
+    [mu_drt_ra,sig_drt_ra] = normal_para(mean_drt_ra,std_drt_ra); [mu_drt_rc,sig_drt_rc] = normal_para(mean_drt_rc,std_drt_rc); % converting them to parameters of underlying normal distribution
+
+    % DDT Distribution parameters % LGES V2 2024 05 % HERE - ADD FACTORS
+    mean_ddt_ra = 1;                        mean_ddt_rc = 1;
+    std_ddt_ra = factors(15);                       std_ddt_rc = factors(16);      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
+    [mu_ddt_ra,sig_ddt_ra] = normal_para(mean_ddt_ra,std_ddt_ra); [mu_ddt_rc,sig_ddt_rc] = normal_para(mean_ddt_rc,std_ddt_rc); % converting them to parameters of underlying normal distribution
 
     % Porous electrode
-    La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02 전극 두께
-    bruga = 1.44;                       brugc = 1.44;   % {modified} 브루그만 porosity
-    epsla =   0.237;                    epslc = 0.234;         % {modified} void fraction LGES 2024 02 공극률
-    n_am1_vf =    0.977;                p_am1_vf = 0.9792;     % {modified}LGES 2024 02활물질 부피비
-    epssa =   (1-epsla)*n_am1_vf;       epssc = (1-epslc)*p_am1_vf;  % {modified} 활물질의 실제 부피비
-    taua = epsla^(-bruga);              tauc = epslc^(-brugc);    %{modifed} tortuosity of electrodes. 전극의 tortuosity
-    sigmaa = 100;                       sigmac = 3800;            % [S/m] this is the solid phase conductivity 고체전도도
-    cs0a = x*cta;                       cs0c = y*ctc;     % OK SOC에 따른 고체 상에서의 이온 농도 (이론 최대값)
-    alphaa = 0.5;                       % same alphaa           % OK 대칭인자(anode)                    
-    alphac = 0.5;                       % same alphac           % OK 대칭인자(cathode)
+    La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    bruga = 1.44;                       brugc = 1.44;   % {modified}
+    epsla =   0.237;                    epslc = 0.234;         % {modified} void fraction LGES 2024 02
+    n_am1_vf =    0.977;                p_am1_vf = 0.9792;     % {modified}LGES 2024 02
+    epssa =   (1-epsla)*n_am1_vf;       epssc = (1-epslc)*p_am1_vf;  % {modified}
+    taua = epsla^(-bruga);              tauc = epslc^(-brugc);    %{modifed} tortuosity of electrodes.
+    sigmaa = 100;                       sigmac = 3800;            % [S/m] this is the solid phase conductivity
+    cs0a = x*cta;                       cs0c = y*ctc;     % OK
+    alphaa = 0.5;                       % same alphaa           % OK                     
+    alphac = 0.5;                       % same alphac           % OK
 
 
     % Electrolyte and Separator
-    c_e = 1120;                 % {modified} [mol/m3] Initial electrolyte concentration 초기 전해질 농도
-    Di0 = factors(12)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter] 전해질 확산도
-    epsls = 0.5;               % OK 분리막의 공극률
-    Lsep = 12.5e-6;              % OK % LGES 2024 02 분리막 두께
-    F = 96487;                  % OK 패러데이 상수
-    R = 8.314;                  % OK 기체 상수
-    iapp = 1;                   % OK - shouldnot matter in impedance 가한 전류 밀도
-    tplus = 0.363;              % OK flux 중 +전하의 비율
-    nu=1;                       % OK 이온 비율 (NaCl2 = 1:2)
+    c_e = 1120;                 % {modified} [mol/m3] Initial electrolyte concentration
+    epsls = 0.5;               % OK
+    Lsep = 12.5e-6;              % OK % LGES 2024 02
+    F = 96487;                  % OK
+    R = 8.314;                  % OK
+    iapp = 1;                   % OK - should not matter in impedance
+    tplus = 0.363;              % OK
+    nu=1;                       % OK
     % brugs = 3.0;              % not used anymore
-    taus = 1.8;                % {modified} [1] tortuosity in separator 분리막 tortuosity
+    taus = 1.8;                % {modified} [1] tortuosity in separator
     % fc = 1.32;                
     % dfdx =1.7e-3;
-    dlnfdlnc = (0.601-0.24*(c_e/(1000))^0.5+0.982*(1-0.0052*(T-298.15))*(c_e/(1000))^1.5)/(1-0.363)-1; % {modified} replacing f and dfdc 퓨가시티 전환시 나오는 식
-    kappa= factors(11)*kappae_function(c_e/1000,T);                 % {modified} c_e input in [mol/liter]  전해질 전기전도도
+    dlnfdlnc = (0.601-0.24*(c_e/(1000))^0.5+0.982*(1-0.0052*(T-298.15))*(c_e/(1000))^1.5)/(1-0.363)-1; % {modified} replacing f and dfdc
+   
+    if soc_integ == 1
+       Del_factor = evalin("base",'Del_factor_integ');
+       Kel_factor = evalin("base",'Kel_factor_integ');
+       
+
+       Di0 = Del_factor*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
+       kappa = Kel_factor*kappae_function(c_e/1000,T); % {modified} c_e input in [mol/liter] 
+    elseif soc_integ == 0
+       Di0 = factors(12)*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
+       kappa= factors(11)*kappae_function(c_e/1000,T); % {modified} c_e input in [mol/liter] 
+    end
 
 
     %% 
@@ -98,12 +126,17 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
     Dieffs = (epsls/taus)*Di0;
     
     dx = 0.0001; % finite difference step size.
+    % dx = 0.01; % finite difference step size.
     chg = 0.5; % amount weighting on charging curve wrpt discharging.
     dUdcc = (1/ctc)*(Uc_function_v2(y+dx,chg) - Uc_function_v2(y-dx,chg))/(2*dx);   % {modified}
     dUdca = (1/cta)*(Ua_function_v2(x+dx,chg) - Ua_function_v2(x-dx,chg))/(2*dx);    % *+*
-
-
-
+     if (plateau1_start <= soc) && (soc <= plateau1_end) %soc 0.07 - 0.15
+       dUdca = (1/cta)*(Ua_function_v2(plateau1_end,chg) - Ua_function_v2(plateau1_start,chg))/(plateau1_end-plateau1_start);
+    elseif (plateau2_start <= soc) && (soc <= plateau2_end) % soc 0.18 - 0.50
+       dUdca = (1/cta)*(Ua_function_v2(plateau2_end,chg) - Ua_function_v2(plateau2_start,chg))/(plateau2_end-plateau2_start);
+    elseif (plateau3_start <= soc) && (soc <= plateau3_end) % 0.51 - 00.98
+       dUdca = (1/cta)*(Ua_function_v2(plateau3_end,chg) - Ua_function_v2(plateau3_start,chg))/(plateau3_end-plateau3_start);
+    end  
 %% Calculation
 
 % initialization matrix
@@ -132,20 +165,21 @@ spc=1i*omegagen(k);      %   s2c                 %[refer to list of symbols]
 Rcta=R*T/i0a/F/(alphaa+alphac);                 %[refer to list of symbols]        
 Rctc=R*T/i0c/F/(alphaa+alphac);                 %[refer to list of symbols]        
 
-Rdifa=-dUdca*Rpa/Dsa/F;                         %[refer to list of symbols]        
-Rdifc=-dUdcc*Rpc/Dsc/F;                         %[refer to list of symbols]        
+paraa = [dUdca,Rpa,Dsa,F,spa,Cdla,Rcta,C_filma,Rfa,mu_drt_ra,sig_drt_ra,mu_ddt_ra,sig_ddt_ra]; % LGES V2 2024 05
+parac = [dUdcc,Rpc,Dsc,F,spc,Cdlc,Rctc,C_filmc,Rfc,mu_drt_rc,sig_drt_rc,mu_ddt_rc,sig_ddt_rc]; % LGES V2 2024 05
 
-Ysa=(sqrt(spa*Rpa^2/Dsa)-tanh(sqrt(spa*Rpa^2/Dsa)))/tanh(sqrt(spa*Rpa^2/Dsa));  % JS: dimensionless solid diffusion admittance [1]
-Ysc=(sqrt(spc*Rpc^2/Dsc)-tanh(sqrt(spc*Rpc^2/Dsc)))/tanh(sqrt(spc*Rpc^2/Dsc));  % JS: dimensionless solid diffusion admittance [1]
+betaa = beta_func(paraa,type_dist); % LGES V2 2024 05
+betac = beta_func(parac,type_dist); % LGES V2 2024 05
 
-zetaa = spa*Cdla + 1/(Rcta+Rdifa/Ysa);          % particle local admittance [m2/ohm]
-zetac = spc*Cdlc + 1/(Rctc+Rdifc/Ysc);          % particle local admittance [m2/ohm]
+% %for comparison beta & zloc of integral & equation
+% betaa_sum(1:2,k) = betaa;
+% betac_sum(1:2,k) = betac;
+% 
+% betaa = betaa(1,:);
+% betac = betac(1,:);
+% %-----------end
 
-
-%New Beta based on Meyers Case 2
-betaa = 1/F*(spa * C_filma + 1/(1/zetaa+Rfa));  % local impedance [m2/ohm] times (1/F)
-betac = 1/F*(spc * C_filmc + 1/(1/zetac+Rfc));  % local impedance [m2/ohm] times (1/F) 
-
+% local impedance [m2/ohm] times (1/F) 
 %1/betaa(c)/F=Z_p,i in the manuscript (refer to eqn [9])
 
 %*******************************************************
@@ -263,6 +297,7 @@ fc_imp(k) = -(phi1x1c-phi1x1a)/iapp;
 %Meyers(k)=1/beta/F;
 end
 
+
 % toc;
 % w_vector = omegagen/(2*pi()); % into [Hz] from [rad] [v6] - taking from input
 %cathode = cathode_impedance(1:N);
@@ -310,28 +345,151 @@ hold on
 plot(real(c_imp(1:N)+a_imp(1:N)+s_imp(1:N))*1e4,-imag(c_imp(1:N)+a_imp(1:N)+s_imp(1:N))*1e4,'bo')
 %}
 
+assignin("base","mu_drt_rc",mu_drt_rc);
+assignin("base","mu_drt_ra",mu_drt_ra);
+assignin("base","sig_drt_rc",sig_drt_rc);
+assignin("base","sig_drt_ra",sig_drt_ra);
+
+assignin("base","mu_ddt_rc",mu_ddt_rc);
+assignin("base","mu_ddt_ra",mu_ddt_ra);
+assignin("base","sig_ddt_rc",sig_ddt_rc);
+assignin("base","sig_ddt_ra",sig_ddt_ra);
 
 %% Output data - changed for fitting
 
 % output = [w_vector.', fc_imp.', c_imp.', a_imp.', s_imp.'];
 % output = [R_itsc+(1/A_coat)*real(fc_imp.'),(1/A_coat)*imag(fc_imp.')]; % unit is [Ohm] format of real matrix
- 
-if type_acf ==1 % anode
-    output = [R_itsc_n+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.')];
-    paras =[R_itsc_n, i0a, Cdla, Dsa, kappa, Di0, aa]';
-elseif type_acf ==2 % cathode
-    output = [R_itsc_p+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
-    paras =[R_itsc_p, i0c, Cdlc, Dsc, kappa, Di0, ac]';
-elseif type_acf ==3 % 3E_simul cell
-    output = [R_itsc_n+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.') R_itsc_p+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
-    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0]';
-elseif type_acf ==4 % 3E_sum cell
+
+if type_acf ==3 % 3E_sum
     output = [R_itsc_n+(1/A_coat)*real(a_imp.')+(1/A_coat)*real(c_imp.')+2.*real(s_imp.') (1/A_coat)*imag(a_imp.')+(1/A_coat)*imag(c_imp.')+2.*imag(s_imp.')];
-    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0]';
+    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0, std_drt_ra, std_drt_rc, std_ddt_ra, std_ddt_rc]';
+elseif type_acf ==4 % 3E_simul
+    output = [R_itsc_n+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.') R_itsc_p+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
+    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0, std_drt_ra, std_drt_rc, std_ddt_ra, std_ddt_rc]';
 else
-    error('select anode (1), cathode (2), 3E_Sum cell (3), 3E_Simul cell (4)')
+    error('3E_simul cell (3), 3E_sum cell (4)')
+end
+ 
+
 end
 
+function beta = beta_func(para,type_dist) % LGES V2 2024 05
+% para = [dUdc,Rp,Ds,F,sp,Cdl,Rct,C_film,Rf,mu_drt,sig_drt,mu_ddt,sig_ddt]
+    if para(11) > 0.001
+        if type_dist == 0 % drt
+            upper_func = @(t)lognpdf(t,para(10),para(11)).*zloc_func_drt(t,para,type_dist); upper = integral(upper_func,0.001,100);
+            down_func = @(t)lognpdf(t,para(10),para(11)); down = integral(down_func,0.001,100);
+            beta = (upper./down)^-1/para(4);
+        elseif type_dist == 1 % ddt
+            upper_func = @(t)lognpdf(t,para(12),para(13)).*yloc_func_ddt(t,para,type_dist); upper = integral(upper_func,0.001,100);
+            down_func = @(t)lognpdf(t,para(12),para(13)); down = integral(down_func,0.001,100);
+            beta = upper./down/para(4);
+        elseif type_dist == 2 % Integrated
+            upper_func_drt = @(t)lognpdf(t,para(10),para(11)).*zloc_func_drt(t,para,type_dist); upper_drt = integral(upper_func_drt,0.001,100);
+            down_func_drt = @(t)lognpdf(t,para(10),para(11)); down_drt = integral(down_func_drt,0.001,100);
+
+            upper_func_ddt = @(t)lognpdf(t,para(12),para(13)).*yloc_func_ddt(t,para,type_dist); upper_ddt = integral(upper_func_ddt,0.001,100);
+            down_func_ddt = @(t)lognpdf(t,para(12),para(13)); down_ddt = integral(down_func_ddt,0.001,100);
+
+      
+                %(10-16 combining; impedance sum (not addmitance sum) sum in beta^-1)
+                % beta is an addmitance (with unit adjusted.)
+            % beta_drt = (upper_drt./down_drt)^-1/para(4);
+            % beta_ddt = upper_ddt./down_ddt/para(4); 
+            % beta_p2d = zloc_func_p2d(para)^-1/para(4);
+            % 
+            % zloc = (beta_drt)^-1 + (beta_ddt)^-1 - (beta_p2d)^-1; 
+            % 
+            % 
+            % beta = zloc^-1; % equation
+
+            
+
+
+            %% beta separation 
+            beta_drt = (upper_drt./down_drt)^-1/para(4);
+            beta_ddt = upper_ddt./down_ddt/para(4); 
+
+            beta = (beta_drt^-1 + beta_ddt^-1)^-1; 
+
+            % beta = [beta1; beta2];
+        end
+    else
+        beta = yloc_func_ddt(1,para)/para(4);
+    end
+end
+
+function yloc = yloc_func_ddt(t,para,type_dist) % LGES V2 2024 05
+% para = [dUdc,Rp,Ds,F,sp,Cdl,Rct,C_film,Rf,mu_drt,sig_drt,mu_ddt,sig_ddt]; 
+
+% Rdif=-dUdc*Rp/Ds/F;
+Rdif = - para(1)*para(2)/para(3)/para(4);
+% Ys=(sqrt(sp*Rp^2/Ds)-tanh(sqrt(sp*Rp^2/Ds)))/tanh(sqrt(sp*Rp^2/Ds))
+Ys=(sqrt(para(5)*t*(para(2)).^2/para(3))-tanh(sqrt(para(5)*t*(para(2)).^2/para(3))))./tanh(sqrt(para(5)*t*(para(2)).^2/para(3)));  
+% zeta = sp*Cdl + 1/(Rct+Rdif/Ys);          %[Eqn [9] in the paper]
+
+
+if type_dist == 1
+zeta = para(5)*para(6) + 1./(para(7)+Rdif./Ys); %[Eqn [9] in the paper]
+elseif type_dist == 2
+zeta = 1./(Rdif./Ys); 
+% zeta = para(5)*para(6) + 1./(para(7)+Rdif./Ys);
+end
+
+%New Beta based on Meyers Case 2
+yloc = para(5)*para(8) + 1./(1./zeta+para(9));  % edit -GS  [Eqn[8] in the paper]
 
 
 end
+
+function zloc = zloc_func_drt(t,para,type_dist) % LGES V2 2024 05
+% para = [dUdc,Rp,Ds,F,sp,Cdl,Rct,C_film,Rf,mu_drt,sig_drt,mu_ddt,sig_ddt]; 
+
+% Rdif=-dUdc*Rp/Ds/F;
+
+Rdif = - para(1)*para(2)/para(3)/para(4);
+% Ys=(sqrt(sp*Rp^2/Ds)-tanh(sqrt(sp*Rp^2/Ds)))/tanh(sqrt(sp*Rp^2/Ds))
+Ys=(sqrt(para(5)*(para(2)).^2/para(3))-tanh(sqrt(para(5)*(para(2)).^2/para(3))))./tanh(sqrt(para(5)*(para(2)).^2/para(3)));  
+% zeta = sp*Cdl + 1/(Rct+Rdif/Ys);          %[Eqn [9] in the paper]
+
+if type_dist == 0
+zeta = para(5)*para(6)*t + 1./(para(7)+Rdif./Ys); %[Eqn [9] in the paper]
+elseif type_dist == 2
+zeta = para(5)*para(6)*t + 1./para(7);          %[Eqn [9] in the paper] omit Rdif
+% zeta = para(5)*para(6)*t + 1./(para(7)+Rdif./Ys);
+end 
+
+yloc = para(5)*para(8) + 1./(1./zeta+para(9));  % edit -GS  [Eqn[8] in the paper]
+
+zloc = yloc.^-1;
+
+end 
+
+
+function zloc =  zloc_func_p2d(para)
+% Rdif = -dUdc*Rp/Ds/F;
+Rdif = -para(1)*para(2)/para(3)/para(4);
+
+% Ys =(sqrt(sp*Rp^2/Ds)-tanh(sqrt(sp*Rp^2/Ds)))/tanh(sqrt(sp*Rp^2/Ds))
+Ys = (sqrt(para(5)*para(2)^2/para(3))-tanh(sqrt(para(5)*para(2)^2/para(3))))/tanh(sqrt(para(5)*para(2)^2/para(3)));
+
+% zeta = sp*Cdl + 1/(Rct+Rdif/Ys);
+zeta = para(5)*para(6)+1/(para(7)+Rdif/Ys);
+
+% admittance
+yloc = (para(5)*para(8)+1/(1/zeta+para(9)));
+
+zloc = yloc^-1;
+end
+
+function [mu,sig]=normal_para(mean,std) % LGES V2 2024 05
+% converting parameters of observed lognormal distribution
+% to parameters of underlying normal distribution
+m=mean;
+v=std^2;
+mu=log(m^2/(v+m^2)^0.5);
+sig=(log(v/m^2+1))^0.5;
+
+
+end
+

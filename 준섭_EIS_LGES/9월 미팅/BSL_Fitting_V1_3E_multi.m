@@ -17,7 +17,7 @@ path_folder = 'G:\공유 드라이브\BSL-Data\LGES\LG raw data\12_6cm2_soc10_EI
 
     para_sum = [];
 
-for SOC = 0:10:100
+for SOC = 70
 % EIS data path
     %path_folder = 'G:\Shared drives\BSL-Data\LGES\LG raw data\12_6cm2_soc10_EIS # Sample 2';
     name_file_n = sprintf('PEIS_C09_anode_cycle_soc%d.csv',SOC); %양극, 음극 각각 지정

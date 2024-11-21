@@ -13,12 +13,12 @@
     clear; clc; close all
 
 %% Configurations
-% soc range
-    soc_vec = 50; %0:10:100;
+% soc range 
+    soc_vec = 70; %0:10:100;
     % fitting할 soc 범위 지정, 0~100%, 10% 단위
     % 단일 SOC에 대해 진행할 경우 단일 SOC값만 입력. 
     
-    save_path = 'C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\LGES_all_users'; %파라미터 결과 저장 폴더 경로 지정 
+    save_path = 'C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\10월 미팅\P2D + DRT + DDT 초도 결과'; %파라미터 결과 저장 폴더 경로 지정 
     save_check = 0; % 피규어 및 파라미터 데이터 저장 유무 선택, 0이면 결과 저장 x, 1이면 결과 저장 O
     % 주의: 동일한 폴더에 동일한 type_acf, type_dist 사용시 기존 파일 삭제 후 저장됨
 
@@ -29,9 +29,10 @@
 
 % Fitting configuration
     type_weight = 1; % 0 for absolute error, 1 for relative error
-    type_acf = 2; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
+    type_acf = 1; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
     type_dist = 2; % 0 for DRT, 1 for DDT, 2 for integrated
-    num_iter = 100; %최적화 과정 최대 반복 횟수
+    num_iter = 0; %P2D 최적화 과정 최대 반복 횟수
+    num_iter_dist = 0; % Dist 최적화 과정 최대 반복 횟수
 
 
 %-----------------------------이 아래로는 수정 불필요-------------------------%
@@ -43,7 +44,7 @@
     elseif type_dist == 2
         dist = 'DRT + DDT'
     end
-
+    disp(dist);
 
     if type_acf == 1
         cell_type = 'Anode';
@@ -57,6 +58,8 @@
     options= optimset('Display','iter','MaxIter',num_iter,'MaxFunEvals',1e5,...
         'TolFun',1e-8,'TolX',1e-8,'FinDiffType','central');
 
+    options_dist= optimset('Display','iter','MaxIter',num_iter_dist,'MaxFunEvals',1e5,...
+        'TolFun',1e-8,'TolX',1e-8,'FinDiffType','central');
 
 % Parameters 
     bounds = [...
@@ -210,7 +213,7 @@ plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
    tic;
    [factors_hat_dist, resnorm,residual,~,~,~,jacobian_hat] ...
         = lsqcurvefit(weighted_model_dist,factors_ini,...
-                      f_data,weighted_data, lb, ub, options);
+                      f_data,weighted_data, lb, ub, options_dist);
    toc;
 
  %% [dist] Plot Results
@@ -261,6 +264,25 @@ hold off;
 set(gcf,'position',[1400 600 1000 500])
 
 
+
+% %Beta comparison
+% figure()
+% hold on;
+% plot(real(betaa_sum(1,:)),imag(betaa_sum(1,:)),'bo-');
+% plot(real(betaa_sum(2,:)),imag(betaa_sum(2,:)),'ro-');
+% hold off;
+% legend('beta integ','beta eq');
+% 
+% %Zloc comparison
+% zloca_sum = (betaa_sum).^-1;
+% zlocc_sum = (betac_sum).^-1;
+% 
+% figure()
+% hold on;
+% plot(real(zloca_sum(1,:)),-imag(zloca_sum(1,:)),'bo-');
+% plot(real(zloca_sum(2,:)),-imag(zloca_sum(2,:)),'ro-');
+% hold off;
+% legend('zloc integ','zloc eq');
 %% Result Summary
    
 Result.factors_hat = factors_hat;

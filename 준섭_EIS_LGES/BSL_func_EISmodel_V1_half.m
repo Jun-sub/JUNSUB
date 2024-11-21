@@ -1,4 +1,4 @@
-function [output,paras] = BSL_func_EISmodel_V1_half(f_vector,factors,soc,T,type_acf) %normal V1_half
+function [output,paras] = BSL_func_EISmodel_V1_half(f_vector,factors,soc,T,type_acf,soc_integ) %normal V1_half
 % function [output,z_part,paras] = BSL_func_EISmodel_V1_half(f_vector,factors,soc,T,type_acf) %for extracting Z_RC, Z_we
     
 % function [z_part, output,paras] = BSL_func_EISmodel_V1_half(f_vector,factors,soc,T,type_acf)
@@ -19,6 +19,14 @@ R_itsc = factors(1)*0.0755; % [Ohm] % LGES 2024 02
  
 addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
 
+plateau1_start = 0.07; %for dUdca plateau setting
+plateau1_end = 0.15;
+
+plateau2_start = 0.18;
+plateau2_end = 0.50;
+
+plateau3_start = 0.51;
+plateau3_end = 0.98;
 %% Thernodynamic Configs
 
 % SOC and stoic 
@@ -29,8 +37,7 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
     
     x = x_0 + (x_1 - x_0)*soc; % anode stoic
     y = y_0 + (y_1 - y_0)*soc; % cathode stoic
-
-
+ 
 %% Kinetics Parameters
     
     % Particle parameters
@@ -62,7 +69,6 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
 
     % Electrolyte and Separator
     c_e = 1120;                 % {modified} [mol/m3] Initial electrolyte concentration
-    Di0 = factors(6)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter]
     epsls = 0.5;               % OK
     Lsep = 12.5e-6;              % OK % LGES 2024 02
     F = 96487;                  % OK
@@ -75,9 +81,17 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
     % fc = 1.32;                
     % dfdx =1.7e-3;
     dlnfdlnc = (0.601-0.24*(c_e/(1000))^0.5+0.982*(1-0.0052*(T-298.15))*(c_e/(1000))^1.5)/(1-0.363)-1; % {modified} replacing f and dfdc
-    kappa= factors(5)*kappae_function(c_e/1000,T);                 % {modified} c_e input in [mol/liter] 
 
+    if soc_integ == 1
+       Del_factor = evalin("base",'Del_factor_integ');
+       Kel_factor = evalin("base",'Kel_factor_integ');
 
+       Di0 = Del_factor*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
+       kappa = Kel_factor*kappae_function(c_e/1000,T); % {modified} c_e input in [mol/liter] 
+    elseif soc_integ == 0
+       Di0 = factors(6)*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
+       kappa= factors(5)*kappae_function(c_e/1000,T); % {modified} c_e input in [mol/liter] 
+    end 
     %% 
 % Parameter Expressions
 
@@ -102,7 +116,13 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
     chg = 0.5; % amount weighting on charging curve wrpt discharging.
     dUdcc = (1/ctc)*(Uc_function_v2(y+dx,chg) - Uc_function_v2(y-dx,chg))/(2*dx);   % {modified}
     dUdca = (1/cta)*(Ua_function_v2(x+dx,chg) - Ua_function_v2(x-dx,chg))/(2*dx);    % *+*
-
+    if (plateau1_start <= soc) && (soc <= plateau1_end) %soc 0.07 - 0.15
+       dUdca = (1/cta)*(Ua_function_v2(plateau1_end,chg) - Ua_function_v2(plateau1_start,chg))/(plateau1_end-plateau1_start);
+    elseif (plateau2_start <= soc) && (soc <= plateau2_end) % soc 0.18 - 0.50
+       dUdca = (1/cta)*(Ua_function_v2(plateau2_end,chg) - Ua_function_v2(plateau2_start,chg))/(plateau2_end-plateau2_start);
+    elseif (plateau3_start <= soc) && (soc <= plateau3_end) % 0.51 - 00.98
+       dUdca = (1/cta)*(Ua_function_v2(plateau3_end,chg) - Ua_function_v2(plateau3_start,chg))/(plateau3_end-plateau3_start);
+    end 
 
 
 %% Calculation
@@ -265,7 +285,6 @@ fc_imp(k) = -(phi1x1c-phi1x1a)/iapp;
 %Capprox (k) = (s-lambda1+B1);
 %Meyers(k)=1/beta/F;
 end
-
 
 
 %% Calculation_part
@@ -490,19 +509,17 @@ assignin('base','Rdiffc',Rdifc);
  
 if type_acf ==1 % anode
     output = [R_itsc+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.')];
-    z_part = [R_itsc+(1/A_coat)*real(Z_RCa.'),(1/A_coat)*imag(Z_RCa.'),R_itsc+(1/A_coat)*real(Z_wea.'),(1/A_coat)*imag(Z_wea.')];
     paras =[R_itsc, i0a, Cdla, Dsa, kappa, Di0, aa]';
     
 elseif type_acf ==2 % cathode
     output = [R_itsc+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
-    z_part = [R_itsc+(1/A_coat)*real(Z_RCc.'),(1/A_coat)*imag(Z_RCc.'),R_itsc+(1/A_coat)*real(Z_wec.'),(1/A_coat)*imag(Z_wec.')];
-    % z_part = [R_itsc+(1/A_coat)*real(Z_RCc.'),(1/A_coat)*imag(Z_RCc.'),R_itsc+(1/A_coat)*real(Z_wec.'),(1/A_coat)*imag(Z_wec.')];
     paras =[R_itsc, i0c, Cdlc, Dsc, kappa, Di0, ac]';
-elseif type_acf ==3 % full cell
-    error('not ready for full cell fitting yet')
-    %output = [R_itsc+(1/A_coat)*real(fc_imp.'),(1/A_coat)*imag(fc_imp.')];
+elseif type_acf ==0 % full cell
+    output = [R_itsc+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
+    paras =[R_itsc, i0c, Cdlc, Dsc, kappa, Di0, ac]';
+
 else
-    error('select anode (1), cathode (2), full cell (3)')
+    error('select anode (1), cathode (2), full cell (0)')
 end
 
 

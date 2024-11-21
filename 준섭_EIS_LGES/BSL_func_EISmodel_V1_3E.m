@@ -1,4 +1,4 @@
-function [output,paras] = BSL_func_EISmodel_V1_3E_Sum(f_vector,factors,soc,T,type_acf)
+function [output,paras] = BSL_func_EISmodel_V1_3E(f_vector,factors,soc,T,type_acf,soc_integ)
 
 % Notes: 			This is an analytical model to predict the EIS for a full cell with intercalation based electrodes, separated by an ion conducting separator. The numerical equivalent was developed in COMSOL and compared to
 % 					the analytical model in J. Electrochem. Soc. 2007 volume 154, issue 1,A43-A54 
@@ -10,6 +10,14 @@ function [output,paras] = BSL_func_EISmodel_V1_3E_Sum(f_vector,factors,soc,T,typ
 omegagen= f_vector*(2*pi()); % frequency vector in [rad]
 N = length(omegagen);% [v6]-taking from the input
 
+plateau1_start = 0.07; %for dUdca plateau setting
+plateau1_end = 0.15;
+
+plateau2_start = 0.18;
+plateau2_end = 0.50;
+
+plateau3_start = 0.51;
+plateau3_end = 0.98;
 %
 A_coat = 12.6*2/10000; % % [m2] % LGES 2024 02 %양극 전극이 코팅된 면적 m^2 단위로 나타냄.
 R_itsc_n = factors(1)*0.0755; % [Ohm] % LGES 2024 02, 05 3E %Rn에 0.0755왜 곱하는건지 모르겠음.
@@ -61,7 +69,6 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
 
     % Electrolyte and Separator
     c_e = 1120;                 % {modified} [mol/m3] Initial electrolyte concentration 초기 전해질 농도
-    Di0 = factors(12)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter] 전해질 확산도
     epsls = 0.5;               % OK 분리막의 공극률
     Lsep = 12.5e-6;              % OK % LGES 2024 02 분리막 두께
     F = 96487;                  % OK 패러데이 상수
@@ -74,9 +81,19 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
     % fc = 1.32;                
     % dfdx =1.7e-3;
     dlnfdlnc = (0.601-0.24*(c_e/(1000))^0.5+0.982*(1-0.0052*(T-298.15))*(c_e/(1000))^1.5)/(1-0.363)-1; % {modified} replacing f and dfdc 퓨가시티 전환시 나오는 식
-    kappa= factors(11)*kappae_function(c_e/1000,T);                 % {modified} c_e input in [mol/liter]  전해질 전기전도도
 
 
+    if soc_integ == 1
+       Del_factor = evalin("base",'Del_factor_integ');
+       Kel_factor = evalin("base",'Kel_factor_integ');
+       
+
+       Di0 = Del_factor*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
+       kappa = Kel_factor*kappae_function(c_e/1000,T); % {modified} c_e input in [mol/liter] 
+    elseif soc_integ == 0
+       Di0 = factors(12)*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
+       kappa= factors(11)*kappae_function(c_e/1000,T); % {modified} c_e input in [mol/liter] 
+    end 
     %% 
 % Parameter Expressions
 
@@ -101,8 +118,13 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
     chg = 0.5; % amount weighting on charging curve wrpt discharging.
     dUdcc = (1/ctc)*(Uc_function_v2(y+dx,chg) - Uc_function_v2(y-dx,chg))/(2*dx);   % {modified}
     dUdca = (1/cta)*(Ua_function_v2(x+dx,chg) - Ua_function_v2(x-dx,chg))/(2*dx);    % *+*
-
-
+    if (plateau1_start <= soc) && (soc <= plateau1_end) %soc 0.07 - 0.15
+       dUdca = (1/cta)*(Ua_function_v2(plateau1_end,chg) - Ua_function_v2(plateau1_start,chg))/(plateau1_end-plateau1_start);
+    elseif (plateau2_start <= soc) && (soc <= plateau2_end) % soc 0.18 - 0.50
+       dUdca = (1/cta)*(Ua_function_v2(plateau2_end,chg) - Ua_function_v2(plateau2_start,chg))/(plateau2_end-plateau2_start);
+    elseif (plateau3_start <= soc) && (soc <= plateau3_end) % 0.51 - 00.98
+       dUdca = (1/cta)*(Ua_function_v2(plateau3_end,chg) - Ua_function_v2(plateau3_start,chg))/(plateau3_end-plateau3_start);
+    end 
 
 %% Calculation
 
@@ -318,18 +340,18 @@ plot(real(c_imp(1:N)+a_imp(1:N)+s_imp(1:N))*1e4,-imag(c_imp(1:N)+a_imp(1:N)+s_im
  
 if type_acf ==1 % anode
     output = [R_itsc_n+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.')];
-    paras =[R_itsc_n, i0a, Cdla, Dsa, kappa, Di0, aa]';
+    paras =[R_itsc_n, i0a, Cdla, Dsa, kappa, Di0, aa];
 elseif type_acf ==2 % cathode
     output = [R_itsc_p+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
-    paras =[R_itsc_p, i0c, Cdlc, Dsc, kappa, Di0, ac]';
-elseif type_acf ==3 % 3E_simul cell
-    output = [R_itsc_n+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.') R_itsc_p+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
-    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0]';
-elseif type_acf ==4 % 3E_sum cell
+    paras =[R_itsc_p, i0c, Cdlc, Dsc, kappa, Di0, ac];
+elseif type_acf ==3 % 3E_sum
     output = [R_itsc_n+(1/A_coat)*real(a_imp.')+(1/A_coat)*real(c_imp.')+2.*real(s_imp.') (1/A_coat)*imag(a_imp.')+(1/A_coat)*imag(c_imp.')+2.*imag(s_imp.')];
-    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0]';
+    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0];
+elseif type_acf ==4 % 3E_simul
+    output = [R_itsc_n+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.') R_itsc_p+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
+    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0];
 else
-    error('select anode (1), cathode (2), 3E_Sum cell (3), 3E_Simul cell (4)')
+    error('select anode (1), cathode (2), 3E_simul cell (3), 3E_sum cell (4)')
 end
 
 

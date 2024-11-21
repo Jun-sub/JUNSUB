@@ -8,17 +8,11 @@ clear; clc; close all
 
 %% Configuration
 
-% folder = 'G:\공유 드라이브\BSL-Data\LGES\2차 실험\OCP\데이터 변환';
-% filename_ocpn = 'Processed_Data_AHC.mat';
-% filename_ocpp = 'Processed_Data_CHC.mat';
-% filename_ocv = 'Processed_Data_OCV.mat';
+folder = 'G:\공유 드라이브\BSL-Data\LGES\2차 실험\OCP\데이터 변환';
+filename_ocpn = 'Processed_Data_AHC.mat';
+filename_ocpp = 'Processed_Data_CHC.mat';
+filename_ocv = 'Processed_Data_OCV.mat';
 
-
-folder = 'G:\공유 드라이브\EE6211_2024\Data\pOCV_and_pOCP';
-
-filename_ocpn = 'AHC_(5)_OCV_C20.mat';
-filename_ocpp = 'CHC_(5)_OCV_C20.mat';
-filename_ocv = 'FCC_(5)_OCV_C20.mat';
 %smooth degree & OCV direction set
 num_move = 100;
 direc = 1; % 0: charge, 1: discharge
@@ -109,9 +103,9 @@ xlabel('soc with stoi')
 
 %% OCV fitting
 
-lb = [0 0.9 0.8 0.15];
+lb = zeros(size(para_ini));
 % lb(2) = 0.8;
-ub = [0.1 1 0.95 0.25];
+ub = ones(size(para_ini));
 
 options = optimoptions("fmincon","Display","iter","MaxIterations",100);
 
@@ -183,21 +177,14 @@ dVdQ_ocpn = movmean(dVdQ_ocpn,num_move);
 
 %Visuallization
 
-x_soc = linspace(-0.2,1.2,length(dVdQ_ocpn));
-y_soc = linspace(-0.2,1.2,length(dVdQ_ocpp));
-
-x_stoi = para_hat(1) + (para_hat(2)-para_hat(1))*x_soc;
-y_stoi = para_hat(3) + (para_hat(4)-para_hat(3))*y_soc;
-
 figure
 hold on;
 plot(ocv(1:end-1,1),dVdQ_ocv,'k-','LineWidth',2);
 % plot(1-ocpp(1:end-1,1),dVdQ_ocpp,'r:','LineWidth',2);
 % plot(ocpn(1:end-1,1),dVdQ_ocpn,'b:','LineWidth',2);
 
-plot(y_stoi,dVdQ_ocpp,'r:','LineWidth',2);
-plot(x_stoi,dVdQ_ocpn,'b:','LineWidth',2);
-
+plot(1-ocpp(1:end-1,1),dVdQ_ocpp,'r:','LineWidth',2);
+plot(ocpn(1:end-1,1),dVdQ_ocpn,'b:','LineWidth',2);
 grid on;
 box on;
 xlabel('SOC')

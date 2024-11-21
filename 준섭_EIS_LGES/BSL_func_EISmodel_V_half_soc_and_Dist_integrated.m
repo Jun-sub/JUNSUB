@@ -1,4 +1,4 @@
-function [output,paras] = BSL_func_EISmodel_V_half_Dist_integrated(f_vector,factors,soc,T,type_acf,type_dist,soc_integ)
+function [output,paras] = BSL_func_EISmodel_V_half_soc_and_Dist_integrated(f_vector,factors,multi_soc_range,T,type_acf,cell_type,type_dist)
 
 % Notes: 			This is an analytical model to predict the EIS for a full cell with intercalation based electrodes, separated by an ion conducting separator. The numerical equivalent was developed in COMSOL and compared to
 % 					the analytical model in J. Electrochem. Soc. 2007 volume 154, issue 1,A43-A54 
@@ -10,21 +10,13 @@ function [output,paras] = BSL_func_EISmodel_V_half_Dist_integrated(f_vector,fact
 omegagen= f_vector*(2*pi()); % frequency vector in [rad]
 N = length(omegagen);% [v6]-taking from the input
 
-plateau1_start = 0.07; %for dUdca plateau setting
-plateau1_end = 0.15;
-
-plateau2_start = 0.18;
-plateau2_end = 0.50;
-
-plateau3_start = 0.51;
-plateau3_end = 0.98;
-%
 A_coat = 12.6*2/10000; % % [m2] % LGES 2024 02
-R_itsc = factors(1)*0.0755; % [Ohm] % LGES 2024 02
 
+% type_anode = 0;
+type_anode = evalin('base','type_anode');
+ 
 addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\interpolations')
 
-    
 %% Thernodynamic Configs
 
 % SOC and stoic 
@@ -32,44 +24,87 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     x_0 = 0.0216; % anode stoic when soc =1
     y_0 = 0.9319; % cathode stoic when soc =0
     y_1 = 0.3532; % cathode stoic when soc =1
+    
+   
+    plateau1_start = 0.07; %for dUdc plateau setting
+    plateau1_end = 0.15;
+    
+    plateau2_start = 0.18;
+    plateau2_end = 0.50;
+    
+    plateau3_start = 0.51;
+    plateau3_end = 0.98;
 
-    x = x_0 + (x_1 - x_0)*soc; % anode stoic
-    y = y_0 + (y_1 - y_0)*soc; % cathode stoic
+    %initiallized matrix
+    c_imp = zeros(N,2*length(multi_soc_range));
+    a_imp = zeros(N,2*length(multi_soc_range));
+    s_imp = zeros(N,2*length(multi_soc_range));
+    fc_imp = zeros(N,2*length(multi_soc_range));  
 
+    for i = 1:length(multi_soc_range)
+        soc = multi_soc_range(i)*0.01;
+
+        x = x_0 + (x_1 - x_0)*soc; % anode stoic
+        y = y_0 + (y_1 - y_0)*soc; % cathode stoic
 
 %% Kinetics Parameters
     
+    R_itsc(i) = factors(1,i)*0.0755; % [Ohm] % LGES 2024 02
+
     % Particle parameters
     Rfa = 0;                            Rfc = 0;        % {modified} [v6b - anode film *+*] [Ohm.m2]
     C_filma = 0;                        C_filmc = 0;    % {modified}  [v6b - anode film *+*] [F/m2]
+    
+    if type_anode == 0
     Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02
-    Dsa = factors(4)*Dsa_function(x,T);      Dsc = factors(4)*Dsc_function(y,T); % {modified} [m^2/sec]      
-    Cdla =  factors(3)*0.2;             Cdlc = factors(3)*0.2;             % [F/m2]     
+    elseif type_anode == 1
+    Rpa =  (16.5)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, Blending
+    elseif type_anode == 2
+    Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, Natural
+    end 
+    
+    Dsa = factors(4,i)*Dsa_function(x,T);      Dsc = factors(4,i)*Dsc_function(y,T); % {modified} [m^2/sec]      
+    Cdla =  factors(3,i)*0.2;             Cdlc = factors(3,i)*0.2;             % [F/m2]     
     cta = 29626;                        ctc = 48786;            % [mol/m3]
 
     % Exchange current density
-    ka = factors(2)*ka_function(x,T,cta); % {modified}
-    kc = factors(2)*kc_function(y,T,ctc); % {modified}
+    ka = factors(2,i)*ka_function(x,T,cta); % {modified}
+    kc = factors(2,i)*kc_function(y,T,ctc); % {modified}
     c_e_ref = 1000; % {modified} [mol/m3] reference concetration of electrolyte
 
     % DRT Distribution parameters % LGES V2 2024 05 % HERE - ADD FACTORS
     mean_drt_ra = 1;                        mean_drt_rc = 1;
-    std_drt_ra = factors(end-1);                       std_drt_rc = factors(end-1);      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
+    std_drt_ra = factors(end-1,i);                       std_drt_rc = factors(end-1,i);      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
     [mu_drt_ra,sig_drt_ra] = normal_para(mean_drt_ra,std_drt_ra); [mu_drt_rc,sig_drt_rc] = normal_para(mean_drt_rc,std_drt_rc); % converting them to parameters of underlying normal distribution
 
     % DDT Distribution parameters % LGES V2 2024 05 % HERE - ADD FACTORS
     mean_ddt_ra = 1;                        mean_ddt_rc = 1;
-    std_ddt_ra = factors(end);                       std_ddt_rc = factors(end);      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
-    [mu_ddt_ra,sig_ddt_ra] = normal_para(mean_ddt_ra,std_ddt_ra); [mu_ddt_rc,sig_ddt_rc] = normal_para(mean_ddt_rc,std_ddt_rc); % converting them to parameters of underlying normal distribution
+    std_ddt_ra = factors(end,i);                       std_ddt_rc = factors(end,i);      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
+    [mu_ddt_ra,sig_ddt_ra] = normal_para(mean_ddt_ra,std_ddt_ra); [mu_ddt_rc,sig_ddt_rc] = normal_para(mean_ddt_rc,std_ddt_rc); % converting them to parameters of underlying normal distributio
 
     % Porous electrode
+    if type_anode == 0
     La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    elseif type_anode == 1
+    La = 77e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    elseif type_anode == 2
+    La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    end 
+
     bruga = 1.44;                       brugc = 1.44;   % {modified}
     epsla =   0.237;                    epslc = 0.234;         % {modified} void fraction LGES 2024 02
     n_am1_vf =    0.977;                p_am1_vf = 0.9792;     % {modified}LGES 2024 02
     epssa =   (1-epsla)*n_am1_vf;       epssc = (1-epslc)*p_am1_vf;  % {modified}
     taua = epsla^(-bruga);              tauc = epslc^(-brugc);    %{modifed} tortuosity of electrodes.
+    
+    if type_anode == 0
     sigmaa = 100;                       sigmac = 3800;            % [S/m] this is the solid phase conductivity
+    elseif type_anode == 1
+    sigmaa = 4.2088e+03;                     sigmac = 24.2718;            % [S/m] this is the solid phase conductivity
+    elseif type_anode == 2
+    sigmaa = 5.6022e+03;                     sigmac = 24.2718;            % [S/m] this is the solid phase conductivity
+    end
+    
     cs0a = x*cta;                       cs0c = y*ctc;     % OK
     alphaa = 0.5;                       % same alphaa           % OK                     
     alphac = 0.5;                       % same alphac           % OK
@@ -77,6 +112,7 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
 
     % Electrolyte and Separator
     c_e = 1120;                 % {modified} [mol/m3] Initial electrolyte concentration
+    Di0 = factors(2,end)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter]
     epsls = 0.5;               % OK
     Lsep = 12.5e-6;              % OK % LGES 2024 02
     F = 96487;                  % OK
@@ -88,29 +124,22 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     taus = 1.8;                % {modified} [1] tortuosity in separator
     % fc = 1.32;                
     % dfdx =1.7e-3;
-    dlnfdlnc = (0.601-0.24*(c_e/(1000))^0.5+0.982*(1-0.0052*(T-298.15))*(c_e/(1000))^1.5)/(1-0.363)-1; % {modified} replacing f and dfd
-    if soc_integ == 1
-       Del_factor = evalin("base",'Del_factor_integ');
-       Kel_factor = evalin("base",'Kel_factor_integ');
+    dlnfdlnc = (0.601-0.24*(c_e/(1000))^0.5+0.982*(1-0.0052*(T-298.15))*(c_e/(1000))^1.5)/(1-0.363)-1; % {modified} replacing f and dfdc
+    kappa= factors(1,end)*kappae_function(c_e/1000,T);                 % {modified} c_e input in [mol/liter] 
 
-       Di0 = Del_factor*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
-       kappa = Kel_factor*kappae_function(c_e/1000,T); % {modified} c_e input in [mol/liter] 
-    elseif soc_integ == 0
-       Di0 = factors(6)*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
-       kappa= factors(5)*kappae_function(c_e/1000,T); % {modified} c_e input in [mol/liter] 
-    end 
 
     %% 
 % Parameter Expressions
 
+
     i0a = F*ka*((c_e/c_e_ref)^alphaa)*((cta-cs0a)^alphaa)*cs0a^alphac;                    % {modified} c_e_ref
     i0c = F*kc*((c_e/c_e_ref)^alphaa)*((ctc-cs0c)^alphaa)*cs0c^alphac;                    % {modified} c_e_ref
     
-    aa =factors(7)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
-    ac =factors(7)*3*epssc/Rpc;
+    aa =factors(5,i)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
+    ac =factors(5,i)*3*epssc/Rpc;
     
-    sigmaeffa=(epssa/taua)*sigmaa; % {modified} all Bruggman relationships are modified.
-    sigmaeffc=(epssc/tauc)*sigmac;
+    sigmaeffa =(epssa/taua)*sigmaa; % {modified} all Bruggman relationships are modified.
+    sigmaeffc =(epssc/tauc)*sigmac;
     
     kappaeffa = (epsla/taua)*kappa;
     kappaeffc = (epslc/tauc)*kappa;
@@ -121,11 +150,11 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     Dieffs = (epsls/taus)*Di0;
     
     dx = 0.0001; % finite difference step size.
-    % dx = 0.01; % finite difference step size.
     chg = 0.5; % amount weighting on charging curve wrpt discharging.
     dUdcc = (1/ctc)*(Uc_function_v2(y+dx,chg) - Uc_function_v2(y-dx,chg))/(2*dx);   % {modified}
     dUdca = (1/cta)*(Ua_function_v2(x+dx,chg) - Ua_function_v2(x-dx,chg))/(2*dx);    % *+*
-     if (plateau1_start <= soc) && (soc <= plateau1_end) %soc 0.07 - 0.15
+            
+    if (plateau1_start <= soc) && (soc <= plateau1_end) %soc 0.07 - 0.15
        dUdca = (1/cta)*(Ua_function_v2(plateau1_end,chg) - Ua_function_v2(plateau1_start,chg))/(plateau1_end-plateau1_start);
     elseif (plateau2_start <= soc) && (soc <= plateau2_end) % soc 0.18 - 0.50
        dUdca = (1/cta)*(Ua_function_v2(plateau2_end,chg) - Ua_function_v2(plateau2_start,chg))/(plateau2_end-plateau2_start);
@@ -133,12 +162,6 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
        dUdca = (1/cta)*(Ua_function_v2(plateau3_end,chg) - Ua_function_v2(plateau3_start,chg))/(plateau3_end-plateau3_start);
     end   
 %% Calculation
-
-% initialization matrix
-c_imp = zeros(1,N);
-a_imp = zeros(1,N);
-s_imp = zeros(1,N);
-fc_imp = zeros(1,N);  
 
 
 for k = 1:N
@@ -273,10 +296,10 @@ phi1x1a = - La^3*aa*F*betaa/sigmaeffa^2*((sa-lambda1a)*C_1_a/B1a/lambda1a+(sa-la
 
 %------------Overall Cell Potential Drop (Sandwich)------------------------
 
-c_imp(k) = -(phi1x1c-phi2_sep_xs_1)/iapp;
-a_imp(k) = -(phi2_sep_xs_0-phi1x1a)/iapp;
-s_imp(k) = -(phi2_sep_xs_1-phi2_sep_xs_0)/iapp;
-fc_imp(k) = -(phi1x1c-phi1x1a)/iapp;
+c_imp(k,i) = -(phi1x1c-phi2_sep_xs_1)/iapp;
+a_imp(k,i) = -(phi2_sep_xs_0-phi1x1a)/iapp;
+s_imp(k,i) = -(phi2_sep_xs_1-phi2_sep_xs_0)/iapp;
+fc_imp(k,i) = -(phi1x1c-phi1x1a)/iapp;
 
 %cell_potentiala (k) = Zc;
 %cell_potentialb(k) = -phi1x1a;
@@ -291,6 +314,9 @@ fc_imp(k) = -(phi1x1c-phi1x1a)/iapp;
 %Capprox (k) = (s-lambda1+B1);
 %Meyers(k)=1/beta/F;
 end
+parasa(:,i) = [R_itsc(i), i0a, Cdla, Dsa, aa, std_drt_ra,std_ddt_ra]';
+parasc(:,i) = [R_itsc(i), i0c, Cdlc, Dsc, ac, std_drt_rc,std_ddt_rc]';
+    end 
 
 % toc;
 % w_vector = omegagen/(2*pi()); % into [Hz] from [rad] [v6] - taking from input
@@ -339,32 +365,66 @@ hold on
 plot(real(c_imp(1:N)+a_imp(1:N)+s_imp(1:N))*1e4,-imag(c_imp(1:N)+a_imp(1:N)+s_imp(1:N))*1e4,'bo')
 %}
 
-assignin("base","mu_drt_rc",mu_drt_rc);
-assignin("base","mu_drt_ra",mu_drt_ra);
-assignin("base","sig_drt_rc",sig_drt_rc);
-assignin("base","sig_drt_ra",sig_drt_ra);
-
-assignin("base","mu_ddt_rc",mu_ddt_rc);
-assignin("base","mu_ddt_ra",mu_ddt_ra);
-assignin("base","sig_ddt_rc",sig_ddt_rc);
-assignin("base","sig_ddt_ra",sig_ddt_ra);
 
 %% Output data - changed for fitting
 
 % output = [w_vector.', fc_imp.', c_imp.', a_imp.', s_imp.'];
 % output = [R_itsc+(1/A_coat)*real(fc_imp.'),(1/A_coat)*imag(fc_imp.')]; % unit is [Ohm] format of real matrix
 
-if type_acf ==1 % anode
-    output = [R_itsc+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.')];
-    paras =[R_itsc, i0a, Cdla, Dsa, kappa, Di0, aa, std_drt_ra,std_ddt_ra]';
+if type_acf == 0 % full
+    for i = 1:length(multi_soc_range)
+        output(:,2*i-1) = R_itsc(i)+(1/A_coat)*real(c_imp(:,i));
+        output(:,2*i) = (1/A_coat)*imag(c_imp(:,i));
+        paras(:,i) = [parasc(:,i); kappa; Di0];
+    end
+    
+elseif type_acf ==1 % anode
+    for i = 1:length(multi_soc_range)
+        output(:,2*i-1) = R_itsc(i)+(1/A_coat)*real(a_imp(:,i));
+        output(:,2*i) = (1/A_coat)*imag(a_imp(:,i));
+        paras(:,i) = [parasa(:,i); kappa; Di0];
+    end
+    
 elseif type_acf ==2 % cathode
-    output = [R_itsc+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
-    paras =[R_itsc, i0c, Cdlc, Dsc, kappa, Di0, ac, std_drt_rc,std_ddt_rc]';
-elseif type_acf ==0 % full cell
-    output = [R_itsc+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
-    paras =[R_itsc, i0c, Cdlc, Dsc, kappa, Di0, ac, std_drt_rc,std_ddt_rc]';
+    for i = 1:length(multi_soc_range)
+        output(:,2*i-1) = R_itsc(i)+(1/A_coat)*real(c_imp(:,i));
+        output(:,2*i) = (1/A_coat)*imag(c_imp(:,i));
+        paras(:,i) = [parasc(:,i); kappa; Di0];
+    end
+    
+elseif type_acf == 3 % 3E_Sum (not work)
+    if strcmp(cell_type, 'Anode')
+            for i = 1:length(multi_soc_range)
+                output(:,2*i-1) = R_itsc(i)+(1/A_coat)*real(a_imp(:,i));
+                output(:,2*i) = (1/A_coat)*imag(a_imp(:,i));
+                
+            end
+                paras =[kappa, Di0]';
+        elseif strcmp(cell_type, 'Cathode')
+    
+            for i = 1:length(multi_soc_range)
+                 output(:,2*i-1) = R_itsc(i)+(1/A_coat)*real(c_imp(:,i));
+            output(:,2*i) = (1/A_coat)*imag(c_imp(:,i));
+            end
+                paras =[kappa, Di0]';
+    end
+elseif type_acf == 4 % 3E_Simul (not work)
+        if strcmp(cell_type, 'Anode')
+            for i = 1:length(multi_soc_range)
+                output(:,2*i-1) = R_itsc(i)+(1/A_coat)*real(a_imp(:,i));
+                output(:,2*i) = (1/A_coat)*imag(a_imp(:,i));
+            end
+                paras =[kappa, Di0]';
+        elseif strcmp(cell_type, 'Cathode')
+    
+            for i = 1:length(multi_soc_range)
+                 output(:,2*i-1) = R_itsc(i)+(1/A_coat)*real(c_imp(:,i));
+                 output(:,2*i) = (1/A_coat)*imag(c_imp(:,i));
+            end
+                paras =[kappa, Di0]';
+        end
 else
-    error('select anode (1), cathode (2), full cell (0)')
+    error('select anode (1), cathode (2), full cell (3)')
 end
  
 
@@ -492,3 +552,4 @@ sig=(log(v/m^2+1))^0.5;
 
 
 end
+

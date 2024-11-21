@@ -14,12 +14,12 @@
 
 %% Configurations
 % soc range
-    soc_vec = 30 %0:10:100;
+    soc_vec = 30; %0:10:100; 
     % fitting할 soc 범위 지정, 0~100%, 10% 단위
     % 단일 SOC에 대해 진행할 경우 단일 SOC값만 입력. 
     
-    save_path = 'C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\LGES_all_users'; %파라미터 결과 저장 폴더 경로 지정 
-    save_check = 0; % 피규어 및 파라미터 데이터 저장 유무 선택, 0이면 결과 저장 x, 1이면 결과 저장 O
+    save_path = 'C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\LGES_all_users\test_data'; %파라미터 결과 저장 폴더 경로 지정 
+    save_check = 1; % 피규어 및 파라미터 데이터 저장 유무 선택, 0이면 결과 저장 x, 1이면 결과 저장 O
     % 주의: 동일한 폴더에 동일한 type_acf, type_dist 사용시 기존 파일 삭제 후 저장됨
 
 % EIS data path
@@ -30,8 +30,8 @@
 % Fitting configuration
     type_weight = 1; % 0 for absolute error, 1 for relative error
     type_acf = 1; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
-    type_dist = 0; % 0 for DRT, 1 for DDT
-    num_iter = 100; %최적화 과정 최대 반복 횟수
+    type_dist = 1; % 0 for DRT, 1 for DDT
+    num_iter = 10; %최적화 과정 최대 반복 횟수
 
 
 %-----------------------------이 아래로는 수정 불필요-------------------------%
@@ -184,7 +184,7 @@ plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
      ylabel('-Z_{im} [Ohm]')
 
     
-
+pause(0.1);
 
 %% Fitting Improvement by Distributed models.
     fprintf(['Start P2D + ' dist ' fitting \n'])

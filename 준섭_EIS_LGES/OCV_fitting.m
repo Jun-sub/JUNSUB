@@ -20,7 +20,7 @@ ocpn = ocpn.OCV_golden.OCVchg; %OCP, OCV 방향 일치, OCPn 방향 반대.
 ocpp = ocpp.OCV_golden.OCVdis;
 
 ocv = load([folder filesep filename_ocv]);
-ocv = ocv.OCV_golden.OCVchg;
+ocv = ocv.OCV_golden.OCVdis;
 
 figure(1)
 subplot(3,1,1)
@@ -91,7 +91,7 @@ function cost = func_cost(soc,para,ocpp,ocpn,ocv_data)
 
 ocv_model = func_ocv_model(soc,para,ocpp,ocpn);
 
-cost = sum((ocv_data - ocv_model).^2);
+cost = sum(sqrt((ocv_data - ocv_model).^2));
 
 end
 

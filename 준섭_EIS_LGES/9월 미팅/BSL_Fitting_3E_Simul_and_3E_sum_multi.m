@@ -19,7 +19,7 @@ path_folder = 'G:\공유 드라이브\BSL-Data\LGES\LG raw data\12_6cm2_soc10_EI
     para_sum3E_sum = [];
     para_sum3E2full = [];
 
-soc_vec = 0:10:100;
+soc_vec = 70;
 for i = 1:length(soc_vec)
 
 SOC = soc_vec(i);
@@ -201,7 +201,7 @@ para_sum3E_sum(2:13,1+SOC/10) = paras1;
 para_sum3E_sum(15,1+SOC/10) = resnorm;
 
 fig_name = sprintf('3Esum plot at soc%d',SOC); %피규어 이름
-savefig(fullfile(save_path,fig_name));
+% savefig(fullfile(save_path,fig_name));
 
 %-------------------------------------------------------3E2full start
 
@@ -269,7 +269,7 @@ savefig(fullfile(save_path,fig_name));
 
 %% FITTING
 %   Call EIS model
-   weighted_model = @(factors,f_data)BSL_func_EISmodel_V1_3E2full(f_data, factors,soc,T,type_acf).*weight_matrix; %모델 예측값에 가중치 곱하여 모델 설정
+   weighted_model = @(factors,f_data)BSL_func_EISmodel_V1_3E_Sum(f_data, factors,soc,T,type_acf).*weight_matrix; %모델 예측값에 가중치 곱하여 모델 설정
    %model = @(factors,f_data)BSL_func_EISmodel_V1_3E(f_data, factors,soc,T,type_acf);
    weighted_data = z_data.*weight_matrix; %가중치 곱해진 데이터 설정
 %   fitting
@@ -281,7 +281,7 @@ savefig(fullfile(save_path,fig_name));
 
 
 %% Plot Results
-[z_model2, paras2] = BSL_func_EISmodel_V1_3E2full(f_data,factors_hat,soc,T,type_acf);
+[z_model2, paras2] = BSL_func_EISmodel_V1_3E_Sum(f_data,factors_hat,soc,T,type_acf);
 
 % Nyquist Plot
     % line colors
@@ -340,7 +340,7 @@ t.Padding = 'compact';
 set(gcf,'position',[100 100 1200 600])
 
 fig_name = sprintf('3E2full & 3Esum plot at soc%d',SOC); %피규어 이름
-savefig(fullfile(save_path,fig_name));
+% savefig(fullfile(save_path,fig_name));
 %% Result Summary
    
 Result.factors_hat = factors_hat;
@@ -355,6 +355,6 @@ para_sum3E2full(15,1+SOC/10) = resnorm;
 % input('press enter to continue') 끊으며 확인하고 싶을 때 사용.
 end
 
-save([save_path filesep  'para_sum3E_Simul.mat']','para_sum3E_sum');
-save([save_path filesep  'para_sum_Sum']','para_sum3E2full');
+% save([save_path filesep  'para_sum3E_Simul.mat']','para_sum3E_sum');
+% save([save_path filesep  'para_sum_Sum']','para_sum3E2full');
 

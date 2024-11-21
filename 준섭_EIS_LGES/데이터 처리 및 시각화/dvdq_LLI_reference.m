@@ -14,7 +14,7 @@ clc;clear;close all
     w_ocv_scale = 1; %OCV scale weight 
     w_dvdq_scale = 5; % dVdQ scale Weight
     N_iter = 100;% 최적화 반복 횟수
-    N_multistart = 24; % multistart 갯수 (현재 desktop에선 구동 불가)
+    N_multistart = 6; % multistart 갯수 (현재 desktop에선 구동 불가)
     t_pause_plot = 0; % plot 사이 퍼즈 (아마 코드 완료 이전 피규어 띄우기 위함인 것으로 보임)
 
 

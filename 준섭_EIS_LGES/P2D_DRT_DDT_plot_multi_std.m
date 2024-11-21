@@ -21,10 +21,10 @@ clear; clc; close all
     type_weight = 1; % 0 for absolute error, 1 for relative error
     type_acf = 2; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
     type_dist = 2; % 0 for DRT, 1 for DDT, 2 for integrated
-    num_iter = 5; %최적화 과정 최대 반복 횟수
+    num_iter = 50; %최적화 과정 최대 반복 횟수
 
 % Distribution visuallize setting
-    dist_target = 0; %0 for DRT, 1 for DDT, 2 for both
+    dist_target = 3; %0 for DRT, 1 for DDT, 2 for both, 3 for plot all
     vec_range_min = 0.1;
     vec_range_max = 2.1;
     vec_interval = 0.3;
@@ -32,7 +32,7 @@ clear; clc; close all
 
 
 
-    std_vec = vec_range_min:vec_interval:vec_range_max; %range of sigma - equally applied
+    std_vec = vec_range_min:vec_interval:vec_range_max; %range of sigma - equally applied to drt & ddt
     
 %-----------------------------이 아래로는 수정 불필요-------------------------%
 
@@ -132,7 +132,7 @@ for i = 1:length(soc_vec)
 fprintf('Start P2D fitting \n')
 
 %% Call EIS model
-   weighted_model = @(factors,f_data)BSL_func_EISmodel_V1_half(f_data, factors,soc,T,type_acf)...
+   weighted_model = @(factors,f_data)BSL_func_EISmodel_V1_half(f_data, factors,soc,T,type_acf,0)...
        .*weight_matrix;
    weighted_data = z_data.*weight_matrix;
 
@@ -150,7 +150,7 @@ std_ini = 0.5;
     lb = factors_ini*0.1;
 
 %%  [dist] Call EIS model
-   weighted_model_dist = @(factors,f_data)BSL_func_EISmodel_V_half_Dist_integrated(f_data, factors,soc,T,type_acf,type_dist)...
+   weighted_model_dist = @(factors,f_data)BSL_func_EISmodel_V_half_Dist_integrated(f_data, factors,soc,T,type_acf,type_dist,0)...
        .*weight_matrix;
    weighted_data = z_data.*weight_matrix;
 
@@ -162,8 +162,18 @@ std_ini = 0.5;
 
 %% P2D + DRT + DDT demonstration upon Std
 factors_dist = factors_hat_dist; % drt, ddt 분포 각각 고려
-        
-figure(2)
+
+if dist_target == 3
+   iter = ones(1,3);
+else
+   iter = 1;
+end
+
+for n = 1:length(iter)
+    if length(iter) == 3;
+       dist_target = n-1;
+    end
+figure()
 hold on;
  
 for k = 1:length(std_vec)
@@ -182,7 +192,7 @@ for k = 1:length(std_vec)
         factors_dist(8) = std_ini_drt;
         factors_dist(9) = std_ini_ddt;
 
-        [z_model2, paras2] = BSL_func_EISmodel_V_half_Dist_integrated(f_data,factors_dist,soc,T,type_acf,type_dist);
+        [z_model2, paras2] = BSL_func_EISmodel_V_half_Dist_integrated(f_data,factors_dist,soc,T,type_acf,type_dist,0);
         
         imp{k} = z_model2;
         if k == 1
@@ -210,7 +220,7 @@ legend_txt{1} = 'Exp data';
 legend('Exp Data', legend_txt)
 set(gcf,'position',[300 300 1000 1000])
 
-figure(3)
+figure()
     hold on;
  
 for k = 1:length(std_vec)
@@ -228,7 +238,7 @@ for k = 1:length(std_vec)
 
         factors_dist(8) = std_ini_drt;
         factors_dist(9) = std_ini_ddt;
-        [z_model2, paras2] = BSL_func_EISmodel_V_half_Dist_integrated(f_data,factors_dist,soc,T,type_acf,type_dist);
+        [z_model2, paras2] = BSL_func_EISmodel_V_half_Dist_integrated(f_data,factors_dist,soc,T,type_acf,type_dist,0);
         
         imp{k} = z_model2;
         if k == 1
@@ -253,4 +263,5 @@ end
 hold off;
 legend('Exp Data', legend_txt)
 set(gcf,'position',[1400 300 1000 1000])
+end
 end 

@@ -8,7 +8,7 @@ clear; clc; close all
 
 addpath 'C:\Users\admin\Documents\GitHub\BSL_LGES2024'
 
-soc_vec = 0:10:100;
+soc_vec = 40; %0:10:100;
 
 save_path = 'C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\Dist_model\Cathode_DDT'; %폴더 계속 지정 
 
@@ -20,7 +20,7 @@ for i = 1:length(soc_vec)
 % EIS data path
     path_folder = 'G:\공유 드라이브\BSL-Data\LGES\LG raw data\12_6cm2_soc10_EIS # Sample 1';
     %path_folder = 'G:\Shared drives\BSL-Data\LGES\LG raw data\12_6cm2_soc10_EIS # Sample 2';
-    name_file = sprintf('PEIS_C09_cathode_cycle_soc%d.csv', SOC);
+    name_file = sprintf('PEIS_C09_anode_cycle_soc%d.csv', SOC);
 
 
 % SOC and T (for initial guess - they are functions of soc, T)
@@ -29,7 +29,7 @@ for i = 1:length(soc_vec)
 
 % Fitting configuration
     type_weight = 1; % 0 for absolute error, 1 for relative error
-    type_acf =2; % 1 for anode, 2 for cathode, 3 for full cell
+    type_acf =1; % 1 for anode, 2 for cathode, 3 for full cell
     type_dist = 1; % 0 for DRT, 1 for DDT
 
     if type_dist == 0
@@ -161,7 +161,7 @@ plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
      ylabel('-Z_{im} [Ohm]')
 
     
-
+pause(0.1);
 
 %% Fitting Improvement by Distributed models.
 
@@ -242,8 +242,8 @@ Result.z_model_dist = z_model2;
 
 Result_table = [[paras1;0] paras2];
 
-fig_name = sprintf([cell_type ' soc_%d' ' P2D' ' + ' dist ' .fig'],SOC); %피규어 저장
-savefig(fullfile(save_path,fig_name));
+% fig_name = sprintf([cell_type ' soc_%d' ' P2D' ' + ' dist ' .fig'],SOC); %피규어 저장
+% savefig(fullfile(save_path,fig_name));
 
 para_sum(1,i) = SOC;
 para_sum(2:8,i) = paras1;
@@ -253,4 +253,4 @@ para_sum(11:18,i) = paras2;
 fprintf(['Process ' num2str(i) ' of ' num2str(length(soc_vec))]);
 end
 
-save([save_path filesep 'para_sum'],'para_sum')
+% save([save_path filesep 'para_sum'],'para_sum')

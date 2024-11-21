@@ -1,4 +1,4 @@
-function [output,paras] = BSL_func_EISmodel_V1_3E_Sum(f_vector,factors,soc,T,type_acf)
+function [output,paras] = BSL_func_EISmodel_V1_3E_2nd_anode(f_vector,factors,soc,T,type_acf,type_anode,type_cell)
 
 % Notes: 			This is an analytical model to predict the EIS for a full cell with intercalation based electrodes, separated by an ion conducting separator. The numerical equivalent was developed in COMSOL and compared to
 % 					the analytical model in J. Electrochem. Soc. 2007 volume 154, issue 1,A43-A54 
@@ -7,13 +7,30 @@ function [output,paras] = BSL_func_EISmodel_V1_3E_Sum(f_vector,factors,soc,T,typ
 % This version is based on JS_EIS_model_V6
 % 3E: is only for fitting both anode and cathode
 
+
 omegagen= f_vector*(2*pi()); % frequency vector in [rad]
 N = length(omegagen);% [v6]-taking from the input
 
+plateau1_start = 0.07; %for dUdc plateau setting
+plateau1_end = 0.15;
+
+plateau2_start = 0.18;
+plateau2_end = 0.50;
+
+plateau3_start = 0.51;
+plateau3_end = 0.98;
 %
-A_coat = 12.6*2/10000; % % [m2] % LGES 2024 02 %양극 전극이 코팅된 면적 m^2 단위로 나타냄.
-R_itsc_n = factors(1)*0.0755; % [Ohm] % LGES 2024 02, 05 3E %Rn에 0.0755왜 곱하는건지 모르겠음.
-R_itsc_p = factors(6)*0.0755; % [Ohm] % LGES 2024 05 3E % Rp에도 마찬가지 
+if type_cell == 1
+    A_coat = 12.6*2/10000; % [m2] % LGES 2024 02
+elseif type_cell == 2
+    if type_anode == 1
+    A_coat = 1179.087*2/10000; % [m2] % LGES 2024 02
+    elseif type_anode == 2
+    A_coat = 1144.449*2/10000; % [m2] % LGES 2024 02
+    end 
+end 
+R_itsc_n = factors(1)*0.0755; % [Ohm] % LGES 2024 02, 05 3E 
+R_itsc_p = factors(6)*0.0755; % [Ohm] % LGES 2024 05 3E  
 
 addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
 
@@ -35,7 +52,11 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
     % Particle parameters
     Rfa = 0;                            Rfc = 0;        % {modified} [v6b - anode film *+*] [Ohm.m2] 전극 필름 저항
     C_filma = 0;                        C_filmc = 0;    % {modified}  [v6b - anode film *+*] [F/m2] 전극 필름 캐패시턴스
-    Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, 05 3E 입자의 반지름
+    if type_anode == 1
+    Rpa =  (16.5)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, Blending
+    elseif type_anode == 2
+    Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, Natural
+    end 
     Dsa = factors(4)*Dsa_function(x,T);      Dsc = factors(9)*Dsc_function(y,T); % {modified} [m^2/sec], 05 3E      고체 확산 계수
     Cdla =  factors(3)*0.2;             Cdlc = factors(8)*0.2;             % [F/m2]     , 05 3E 입자 표면 이중층 캐패시턴스
     cta = 29626;                        ctc = 48786;            % [mol/m3] 최대 농도
@@ -47,13 +68,21 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
 
 
     % Porous electrode
-    La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02 전극 두께
+    if type_anode == 1
+    La = 77e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    elseif type_anode == 2
+    La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    end 
     bruga = 1.44;                       brugc = 1.44;   % {modified} 브루그만 porosity
     epsla =   0.237;                    epslc = 0.234;         % {modified} void fraction LGES 2024 02 공극률
     n_am1_vf =    0.977;                p_am1_vf = 0.9792;     % {modified}LGES 2024 02활물질 부피비
     epssa =   (1-epsla)*n_am1_vf;       epssc = (1-epslc)*p_am1_vf;  % {modified} 활물질의 실제 부피비
     taua = epsla^(-bruga);              tauc = epslc^(-brugc);    %{modifed} tortuosity of electrodes. 전극의 tortuosity
-    sigmaa = 100;                       sigmac = 3800;            % [S/m] this is the solid phase conductivity 고체전도도
+    if type_anode == 1
+    sigmaa = 4.2088e+03;                       sigmac = 24.2718;            % [S/m] this is the solid phase conductivity
+    elseif type_anode == 2
+    sigmaa = 5.6022e+03;                       sigmac = 24.2718;            % [S/m] this is the solid phase conductivity
+    end
     cs0a = x*cta;                       cs0c = y*ctc;     % OK SOC에 따른 고체 상에서의 이온 농도 (이론 최대값)
     alphaa = 0.5;                       % same alphaa           % OK 대칭인자(anode)                    
     alphac = 0.5;                       % same alphac           % OK 대칭인자(cathode)
@@ -101,8 +130,13 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
     chg = 0.5; % amount weighting on charging curve wrpt discharging.
     dUdcc = (1/ctc)*(Uc_function_v2(y+dx,chg) - Uc_function_v2(y-dx,chg))/(2*dx);   % {modified}
     dUdca = (1/cta)*(Ua_function_v2(x+dx,chg) - Ua_function_v2(x-dx,chg))/(2*dx);    % *+*
-
-
+    if (plateau1_start <= soc) && (soc <= plateau1_end) %soc 0.07 - 0.15
+       dUdca = (1/cta)*(Ua_function_v2(plateau1_end,chg) - Ua_function_v2(plateau1_start,chg))/(plateau1_end-plateau1_start);
+    elseif (plateau2_start <= soc) && (soc <= plateau2_end) % soc 0.18 - 0.50
+       dUdca = (1/cta)*(Ua_function_v2(plateau2_end,chg) - Ua_function_v2(plateau2_start,chg))/(plateau2_end-plateau2_start);
+    elseif (plateau3_start <= soc) && (soc <= plateau3_end) % 0.51 - 00.98
+       dUdca = (1/cta)*(Ua_function_v2(plateau3_end,chg) - Ua_function_v2(plateau3_start,chg))/(plateau3_end-plateau3_start);
+    end
 
 %% Calculation
 
@@ -322,14 +356,18 @@ if type_acf ==1 % anode
 elseif type_acf ==2 % cathode
     output = [R_itsc_p+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
     paras =[R_itsc_p, i0c, Cdlc, Dsc, kappa, Di0, ac]';
-elseif type_acf ==3 % 3E_simul cell
+elseif type_acf ==3 % 3E_sum
+    if type_cell == 1
+    output = [R_itsc_n+(1/A_coat)*real(a_imp.')+(1/A_coat)*real(c_imp.')+2.*real(s_imp.') (1/A_coat)*imag(a_imp.')+(1/A_coat)*imag(c_imp.')+2.*imag(s_imp.')];
+    elseif type_cell == 2
+    output = [R_itsc_n+(1/A_coat)*real(a_imp.')+(1/A_coat)*real(c_imp.')+real(s_imp.') (1/A_coat)*imag(a_imp.')+(1/A_coat)*imag(c_imp.')+imag(s_imp.')];
+    end 
+    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0]';
+elseif type_acf ==4 % 3E_simul
     output = [R_itsc_n+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.') R_itsc_p+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
     paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0]';
-elseif type_acf ==4 % 3E_sum cell
-    output = [R_itsc_n+(1/A_coat)*real(a_imp.')+(1/A_coat)*real(c_imp.')+2.*real(s_imp.') (1/A_coat)*imag(a_imp.')+(1/A_coat)*imag(c_imp.')+2.*imag(s_imp.')];
-    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0]';
 else
-    error('select anode (1), cathode (2), 3E_Sum cell (3), 3E_Simul cell (4)')
+    error('select anode (1), cathode (2), 3E_simul cell (3), 3E_sum cell (4)')
 end
 
 

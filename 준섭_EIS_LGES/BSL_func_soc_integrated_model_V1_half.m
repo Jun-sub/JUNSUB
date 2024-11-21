@@ -1,93 +1,139 @@
-function [output,paras] = BSL_func_EISmodel_V1_3E_Sum(f_vector,factors,soc,T,type_acf)
+function [output,paras] = BSL_func_soc_integrated_model_V1_half(f_vector,factors,multi_soc_range,T,type_acf,cell_type) %normal V1_half
+% function [output,z_part,paras] = BSL_func_EISmodel_V1_half(f_vector,factors,soc,T,type_acf) %for extracting Z_RC, Z_we
+    
+% function [z_part, output,paras] = BSL_func_EISmodel_V1_half(f_vector,factors,soc,T,type_acf)
 
 % Notes: 			This is an analytical model to predict the EIS for a full cell with intercalation based electrodes, separated by an ion conducting separator. The numerical equivalent was developed in COMSOL and compared to
 % 					the analytical model in J. Electrochem. Soc. 2007 volume 154, issue 1,A43-A54 
 % [corrected] 2008 papaer, Eqn 31: the first large parenthesis should have a negtive sign
 
 % This version is based on JS_EIS_model_V6
-% 3E: is only for fitting both anode and cathode
+% add Z_RC & Z_we (|Ds = Inf) calculation_2024_09_24
+
 
 omegagen= f_vector*(2*pi()); % frequency vector in [rad]
 N = length(omegagen);% [v6]-taking from the input
 
-%
-A_coat = 12.6*2/10000; % % [m2] % LGES 2024 02 %양극 전극이 코팅된 면적 m^2 단위로 나타냄.
-R_itsc_n = factors(1)*0.0755; % [Ohm] % LGES 2024 02, 05 3E %Rn에 0.0755왜 곱하는건지 모르겠음.
-R_itsc_p = factors(6)*0.0755; % [Ohm] % LGES 2024 05 3E % Rp에도 마찬가지 
+A_coat = 12.6*2/10000; % % [m2] % LGES 2024 02
 
-addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
+% type_anode = 0; 
+type_anode = evalin('base','type_anode');
 
+addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\interpolations')
 
 %% Thernodynamic Configs
 
 % SOC and stoic 
-    x_1 = 0.8781; % anode stoic when soc =0 %Stoi 무엇을 기준으로 설정한건지. 
+    x_1 = 0.8781; % anode stoic when soc =0
     x_0 = 0.0216; % anode stoic when soc =1
     y_0 = 0.9319; % cathode stoic when soc =0
     y_1 = 0.3532; % cathode stoic when soc =1
+    
+   
+    plateau1_start = 0.07; %for dUdca plateau setting
+    plateau1_end = 0.15;
+    
+    plateau2_start = 0.18;
+    plateau2_end = 0.50;
+    
+    plateau3_start = 0.51;
+    plateau3_end = 0.98;
 
-    x = x_0 + (x_1 - x_0)*soc; % anode stoic
-    y = y_0 + (y_1 - y_0)*soc; % cathode stoic
+    %initiallized matrix
+    c_imp = zeros(N,length(multi_soc_range));
+    a_imp = zeros(N,length(multi_soc_range));
+    s_imp = zeros(N,length(multi_soc_range));
+    fc_imp = zeros(N,length(multi_soc_range));  
 
+    for i = 1:length(multi_soc_range)
+        soc = multi_soc_range(i)*0.01;
+
+        x = x_0 + (x_1 - x_0)*soc; % anode stoic
+        y = y_0 + (y_1 - y_0)*soc; % cathode stoic
 
 %% Kinetics Parameters
-    
+    R_itsc(i) = factors(1,i)*0.0755; % [Ohm] % LGES 2024 02
+
     % Particle parameters
-    Rfa = 0;                            Rfc = 0;        % {modified} [v6b - anode film *+*] [Ohm.m2] 전극 필름 저항
-    C_filma = 0;                        C_filmc = 0;    % {modified}  [v6b - anode film *+*] [F/m2] 전극 필름 캐패시턴스
-    Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, 05 3E 입자의 반지름
-    Dsa = factors(4)*Dsa_function(x,T);      Dsc = factors(9)*Dsc_function(y,T); % {modified} [m^2/sec], 05 3E      고체 확산 계수
-    Cdla =  factors(3)*0.2;             Cdlc = factors(8)*0.2;             % [F/m2]     , 05 3E 입자 표면 이중층 캐패시턴스
-    cta = 29626;                        ctc = 48786;            % [mol/m3] 최대 농도
+    Rfa = 0;                            Rfc = 0;        % {modified} [v6b - anode film *+*] [Ohm.m2]
+    C_filma = 0;                        C_filmc = 0;    % {modified}  [v6b - anode film *+*] [F/m2]
+    
+    if type_anode == 0
+    Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02
+    elseif type_anode == 1
+    Rpa =  (16.5)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, Blending
+    elseif type_anode == 2
+    Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, Natural
+    end 
+    
+    Dsa = factors(4,i)*Dsa_function(x,T);      Dsc = factors(4,i)*Dsc_function(y,T); % {modified} [m^2/sec]      
+    Cdla =  factors(3,i)*0.2;             Cdlc = factors(3,i)*0.2;             % [F/m2]     
+    cta = 29626;                        ctc = 48786;            % [mol/m3]
 
     % Exchange current density
-    ka = factors(2)*ka_function(x,T,cta); % {modified} 교환 전류 밀도 (i0*ka), SOC 범위에서 Ka계산.
-    kc = factors(7)*kc_function(y,T,ctc); % {modified}, 05 3E 비표면적
+    ka = factors(2,i)*ka_function(x,T,cta); % {modified}
+    kc = factors(2,i)*kc_function(y,T,ctc); % {modified}
     c_e_ref = 1000; % {modified} [mol/m3] reference concetration of electrolyte
 
 
     % Porous electrode
-    La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02 전극 두께
-    bruga = 1.44;                       brugc = 1.44;   % {modified} 브루그만 porosity
-    epsla =   0.237;                    epslc = 0.234;         % {modified} void fraction LGES 2024 02 공극률
-    n_am1_vf =    0.977;                p_am1_vf = 0.9792;     % {modified}LGES 2024 02활물질 부피비
-    epssa =   (1-epsla)*n_am1_vf;       epssc = (1-epslc)*p_am1_vf;  % {modified} 활물질의 실제 부피비
-    taua = epsla^(-bruga);              tauc = epslc^(-brugc);    %{modifed} tortuosity of electrodes. 전극의 tortuosity
-    sigmaa = 100;                       sigmac = 3800;            % [S/m] this is the solid phase conductivity 고체전도도
-    cs0a = x*cta;                       cs0c = y*ctc;     % OK SOC에 따른 고체 상에서의 이온 농도 (이론 최대값)
-    alphaa = 0.5;                       % same alphaa           % OK 대칭인자(anode)                    
-    alphac = 0.5;                       % same alphac           % OK 대칭인자(cathode)
+    if type_anode == 0
+    La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    elseif type_anode == 1
+    La = 77e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    elseif type_anode == 2
+    La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    end 
+
+    bruga = 1.44;                       brugc = 1.44;   % {modified}
+    epsla =   0.237;                    epslc = 0.234;         % {modified} void fraction LGES 2024 02
+    n_am1_vf =    0.977;                p_am1_vf = 0.9792;     % {modified}LGES 2024 02
+    epssa =   (1-epsla)*n_am1_vf;       epssc = (1-epslc)*p_am1_vf;  % {modified}
+    taua = epsla^(-bruga);              tauc = epslc^(-brugc);    %{modifed} tortuosity of electrodes.
+    
+    if type_anode == 0
+    sigmaa = 100;                       sigmac = 3800;            % [S/m] this is the solid phase conductivity
+    elseif type_anode == 1
+    sigmaa = 4.2088e+03;                     sigmac = 24.2718;            % [S/m] this is the solid phase conductivity
+    elseif type_anode == 2
+    sigmaa = 5.6022e+03;                     sigmac = 24.2718;            % [S/m] this is the solid phase conductivity
+    end
+    
+    cs0a = x*cta;                       cs0c = y*ctc;     % OK
+    alphaa = 0.5;                       % same alphaa           % OK                     
+    alphac = 0.5;                       % same alphac           % OK
 
 
     % Electrolyte and Separator
-    c_e = 1120;                 % {modified} [mol/m3] Initial electrolyte concentration 초기 전해질 농도
-    Di0 = factors(12)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter] 전해질 확산도
-    epsls = 0.5;               % OK 분리막의 공극률
-    Lsep = 12.5e-6;              % OK % LGES 2024 02 분리막 두께
-    F = 96487;                  % OK 패러데이 상수
-    R = 8.314;                  % OK 기체 상수
-    iapp = 1;                   % OK - shouldnot matter in impedance 가한 전류 밀도
-    tplus = 0.363;              % OK flux 중 +전하의 비율
-    nu=1;                       % OK 이온 비율 (NaCl2 = 1:2)
+    c_e = 1120;                 % {modified} [mol/m3] Initial electrolyte concentration
+    Di0 = factors(2,end)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter]
+    epsls = 0.5;               % OK
+    Lsep = 12.5e-6;              % OK % LGES 2024 02
+    F = 96487;                  % OK
+    R = 8.314;                  % OK
+    iapp = 1;                   % OK - should not matter in impedance
+    tplus = 0.363;              % OK
+    nu=1;                       % OK
     % brugs = 3.0;              % not used anymore
-    taus = 1.8;                % {modified} [1] tortuosity in separator 분리막 tortuosity
+    taus = 1.8;                % {modified} [1] tortuosity in separator
     % fc = 1.32;                
     % dfdx =1.7e-3;
-    dlnfdlnc = (0.601-0.24*(c_e/(1000))^0.5+0.982*(1-0.0052*(T-298.15))*(c_e/(1000))^1.5)/(1-0.363)-1; % {modified} replacing f and dfdc 퓨가시티 전환시 나오는 식
-    kappa= factors(11)*kappae_function(c_e/1000,T);                 % {modified} c_e input in [mol/liter]  전해질 전기전도도
+    dlnfdlnc = (0.601-0.24*(c_e/(1000))^0.5+0.982*(1-0.0052*(T-298.15))*(c_e/(1000))^1.5)/(1-0.363)-1; % {modified} replacing f and dfdc
+    kappa= factors(1,end)*kappae_function(c_e/1000,T);                 % {modified} c_e input in [mol/liter] 
 
 
     %% 
 % Parameter Expressions
 
+
     i0a = F*ka*((c_e/c_e_ref)^alphaa)*((cta-cs0a)^alphaa)*cs0a^alphac;                    % {modified} c_e_ref
     i0c = F*kc*((c_e/c_e_ref)^alphaa)*((ctc-cs0c)^alphaa)*cs0c^alphac;                    % {modified} c_e_ref
     
-    aa =factors(5)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
-    ac =factors(10)*3*epssc/Rpc;
+    aa =factors(5,i)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
+    ac =factors(5,i)*3*epssc/Rpc;
     
-    sigmaeffa=(epssa/taua)*sigmaa; % {modified} all Bruggman relationships are modified.
-    sigmaeffc=(epssc/tauc)*sigmac;
+    sigmaeffa =(epssa/taua)*sigmaa; % {modified} all Bruggman relationships are modified.
+    sigmaeffc =(epssc/tauc)*sigmac;
     
     kappaeffa = (epsla/taua)*kappa;
     kappaeffc = (epslc/tauc)*kappa;
@@ -101,17 +147,16 @@ addpath('C:\Users\admin\Documents\GitHub\BSL_EIS\1_standalone\interpolations')
     chg = 0.5; % amount weighting on charging curve wrpt discharging.
     dUdcc = (1/ctc)*(Uc_function_v2(y+dx,chg) - Uc_function_v2(y-dx,chg))/(2*dx);   % {modified}
     dUdca = (1/cta)*(Ua_function_v2(x+dx,chg) - Ua_function_v2(x-dx,chg))/(2*dx);    % *+*
-
-
+            
+    if (plateau1_start <= soc) && (soc <= plateau1_end) %soc 0.07 - 0.15
+       dUdca = (1/cta)*(Ua_function_v2(plateau1_end,chg) - Ua_function_v2(plateau1_start,chg))/(plateau1_end-plateau1_start);
+    elseif (plateau2_start <= soc) && (soc <= plateau2_end) % soc 0.18 - 0.50
+       dUdca = (1/cta)*(Ua_function_v2(plateau2_end,chg) - Ua_function_v2(plateau2_start,chg))/(plateau2_end-plateau2_start);
+    elseif (plateau3_start <= soc) && (soc <= plateau3_end) % 0.51 - 00.98
+       dUdca = (1/cta)*(Ua_function_v2(plateau3_end,chg) - Ua_function_v2(plateau3_start,chg))/(plateau3_end-plateau3_start);
+    end 
 
 %% Calculation
-
-% initialization matrix
-c_imp = zeros(1,N);
-a_imp = zeros(1,N);
-s_imp = zeros(1,N);
-fc_imp = zeros(1,N);  
-
 
 for k = 1:N
 %*************************************************************************
@@ -219,7 +264,7 @@ C_8_c=-Lc/sigmaeffc*((sc-lambda1c)/B1c*C_1_c*(1-Lc^2*ac*F*betac/sigmaeffc/lambda
 GAMMALAMBDAC1=-B1c*iapp/sqrt(lambda1c)/(lambda1c-lambda2c)/tanh(sqrt(lambda1c))-C_2_c/sinh(sqrt(lambda1c));
 GAMMALAMBDAC2= B1c*iapp/sqrt(lambda2c)/(lambda1c-lambda2c)/tanh(sqrt(lambda2c))-C_4_c/sinh(sqrt(lambda2c));
 
-phi1x1c=-Lc^3*ac*F*betac/sigmaeffc^2*((sc-lambda1c)/B1c/lambda1c*(GAMMALAMBDAC1)+(sc-lambda2c)/B1c/lambda2c*(GAMMALAMBDAC2))+C_7_c+C_8_c;
+phi1x1c=-Lc^3*ac*F*betac/sigmaeffc^2*((sc-lambda1c)/B1c/lambda1c*(GAMMALAMBDAC1)+(sc-lambda2c)/B1c/lambda2c*(GAMMALAMBDAC2))+C_7_c+C_8_c; % eqn[31]
 
 
 
@@ -238,98 +283,55 @@ GAMMALAMBDAA2=-B1a*iapp/sqrt(lambda2a)/(lambda1a-lambda2a)/sinh(sqrt(lambda2a))-
 C_7_a=-La*iapp/sigmaeffa*(1-La^2*aa*F*betaa/iapp/sigmaeffa*((sa-lambda1a)/B1a/sqrt(lambda1a)*C_2_a+(sa-lambda2a)/B1a/sqrt(lambda2a)*C_4_a));
 C_8_a=-La/sigmaeffa*((sa-lambda1a)/B1a*GAMMALAMBDAA1*(1-La^2*aa*F*betaa/sigmaeffa/lambda1a)+(sa-lambda2a)/B1a*GAMMALAMBDAA2*(1-La^2*aa*F*betaa/sigmaeffa/lambda2a))+Lsep*iapp/kappaeffs*(1+(c_sep_xs_0-c_sep_xs_1)/iapp)-C_7_a;
 
-phi1x1a = - La^3*aa*F*betaa/sigmaeffa^2*((sa-lambda1a)*C_1_a/B1a/lambda1a+(sa-lambda2a)*C_3_a/B1a/lambda2a) + C_8_a;
+phi1x1a = - La^3*aa*F*betaa/sigmaeffa^2*((sa-lambda1a)*C_1_a/B1a/lambda1a+(sa-lambda2a)*C_3_a/B1a/lambda2a) + C_8_a; 
 
 %*************************************************************************
 
 %------------Overall Cell Potential Drop (Sandwich)------------------------
 
-c_imp(k) = -(phi1x1c-phi2_sep_xs_1)/iapp;
-a_imp(k) = -(phi2_sep_xs_0-phi1x1a)/iapp;
-s_imp(k) = -(phi2_sep_xs_1-phi2_sep_xs_0)/iapp;
-fc_imp(k) = -(phi1x1c-phi1x1a)/iapp;
+c_imp(k,i) = -(phi1x1c-phi2_sep_xs_1)/iapp;
+a_imp(k,i) = -(phi2_sep_xs_0-phi1x1a)/iapp;
+s_imp(k,i) = -(phi2_sep_xs_1-phi2_sep_xs_0)/iapp;
+fc_imp(k,i) = -(phi1x1c-phi1x1a)/iapp;
 
-%cell_potentiala (k) = Zc;
-%cell_potentialb(k) = -phi1x1a;
 
-%lambda1set(k)=lambda1;
-%lambda2set(k)=lambda2;
-%C_1set(k)=C_1;C_2set(k)=C_2;
-%C_3set(k)=C_3;C_4set(k)=C_4;
-%B1_set(k)=B1;
-%B2_set(k)=B2;
-%sset(k)=s;
-%Capprox (k) = (s-lambda1+B1);
-%Meyers(k)=1/beta/F;
 end
+parasa(:,i) = [R_itsc(i), i0a, Cdla, Dsa, aa]';
+parasc(:,i) = [R_itsc(i), i0c, Cdlc, Dsc, ac]';
+    end
 
-% toc;
-% w_vector = omegagen/(2*pi()); % into [Hz] from [rad] [v6] - taking from input
-%cathode = cathode_impedance(1:N);
-%anode = anode_impedance(1:N);
-%separator = separator_impedance(1:N);
-%fullcell = full_cell_impedance(1:N);
-
-%end
 %****************NYQUIST PLOTS*********************************************
  
-% data = [omegagen(1:N)',real(c_imp)'*1e4,imag(c_imp)'*1e4]
- 
-% simulated_data = [real(cell_potential(start:ende))'*1e4,-imag(cell_potential(start:ende))'*1e4]; 
-%{
-% These are in unit of [Ohm/m2]
-plot(real(c_imp(1:N)),-imag(c_imp(1:N)),'r-','Linewidth',2)
-hold on 
-plot(real(s_imp(1:N)),-imag(s_imp(1:N)),'g-','Linewidth',2)
-hold on
-plot(real(a_imp(1:N)),-imag(a_imp(1:N)),'b-','Linewidth',2)
-hold on
-plot(real(fc_imp(1:N)),-imag(fc_imp(1:N)),'m-','Linewidth',2)
-%hold on
-%plot(real(c_imp(1:N)+a_imp(1:N)+s_imp(1:N)),-imag(c_imp(1:N)+a_imp(1:N)+s_imp(1:N)),'bo')
 
-% Bode plots
-
-figure(2); hold on;
-subplot(2,1,1)
-loglog(w_vector,abs(c_imp))
-subplot(2,1,2)
-semilogx(w_vector,angle(c_imp)/pi()*180)
-%}
-
-%{
-% These are in unit of [Ohm/cm2]
-plot(real(c_imp(1:N))*1e4,-imag(c_imp(1:N))*1e4,'r-')
-hold on 
-plot(real(s_imp(1:N))*1e4,-imag(s_imp(1:N))*1e4,'go')
-hold on
-plot(real(a_imp(1:N))*1e4,-imag(a_imp(1:N))*1e4,'b-')
-hold on
-plot(real(fc_imp(1:N))*1e4,-imag(fc_imp(1:N))*1e4,'m-')
-hold on
-plot(real(c_imp(1:N)+a_imp(1:N)+s_imp(1:N))*1e4,-imag(c_imp(1:N)+a_imp(1:N)+s_imp(1:N))*1e4,'bo')
-%}
 
 
 %% Output data - changed for fitting
-
+% assignin('base','Rdiffa',Rdifa);
+% assignin('base','Rdiffc',Rdifc);
 % output = [w_vector.', fc_imp.', c_imp.', a_imp.', s_imp.'];
 % output = [R_itsc+(1/A_coat)*real(fc_imp.'),(1/A_coat)*imag(fc_imp.')]; % unit is [Ohm] format of real matrix
- 
-if type_acf ==1 % anode
-    output = [R_itsc_n+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.')];
-    paras =[R_itsc_n, i0a, Cdla, Dsa, kappa, Di0, aa]';
-elseif type_acf ==2 % cathode
-    output = [R_itsc_p+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
-    paras =[R_itsc_p, i0c, Cdlc, Dsc, kappa, Di0, ac]';
-elseif type_acf ==3 % 3E_simul cell
-    output = [R_itsc_n+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.') R_itsc_p+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
-    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0]';
-elseif type_acf ==4 % 3E_sum cell
-    output = [R_itsc_n+(1/A_coat)*real(a_imp.')+(1/A_coat)*real(c_imp.')+2.*real(s_imp.') (1/A_coat)*imag(a_imp.')+(1/A_coat)*imag(c_imp.')+2.*imag(s_imp.')];
-    paras =[R_itsc_n, i0a, Cdla, Dsa, aa, R_itsc_p, i0c, Cdlc, Dsc, ac, kappa, Di0]';
-else
-    error('select anode (1), cathode (2), 3E_Sum cell (3), 3E_Simul cell (4)')
+
+if type_acf == 0; % full
+        for i = 1:length(multi_soc_range)
+            output(:,2*i-1) = R_itsc(i)+(1/A_coat)*real(c_imp(:,i));
+            output(:,2*i) = (1/A_coat)*imag(c_imp(:,i));
+            paras(:,i) = [parasc(:,i); kappa; Di0];
+        end
+    elseif type_acf ==1 % anode
+        for i = 1:length(multi_soc_range)
+            output(:,2*i-1) = R_itsc(i)+(1/A_coat)*real(a_imp(:,i));
+            output(:,2*i) = (1/A_coat)*imag(a_imp(:,i));
+            paras(:,i) = [parasa(:,i); kappa; Di0];
+        end
+            
+    elseif type_acf ==2 % cathode
+        for i = 1:length(multi_soc_range)
+            output(:,2*i-1) = R_itsc(i)+(1/A_coat)*real(c_imp(:,i));
+            output(:,2*i) = (1/A_coat)*imag(c_imp(:,i));
+            paras(:,i) = [parasc(:,i); kappa; Di0];
+        end
+
+    
 end
 
 

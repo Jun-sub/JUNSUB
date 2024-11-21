@@ -5,7 +5,7 @@ w = logspace(-3,3,300);
 
 % initial guess
 R0 = 3;
-C = 10^-3;
+C = 10^-2;
 A = 1.2;
 R1 = 35;
 
