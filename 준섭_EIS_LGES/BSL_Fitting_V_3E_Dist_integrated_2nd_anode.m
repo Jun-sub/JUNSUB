@@ -12,7 +12,7 @@
 % for n = 1:2 %for multilple acquisition of data
 
 %% Configurations
-    save_path = 'G:\공유 드라이브\Battery Software Lab\Projects\LGES 2023\발표 및 공유자료\10월 미팅자료\흑연 2종 결과 데이터\천연_100%\3E_Simul\30,50,70'; %파라미터 결과 저장 폴더 경로 지정 
+    save_path = 'C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\10월 미팅\multi-soc_DRT_plot_2nd_anode_Natural'; %파라미터 결과 저장 폴더 경로 지정 
     save_check = 1; % 피규어 및 파라미터 데이터 저장 유무 선택, 0이면 결과 저장 x, 1이면 결과 저장 O
     % 주의: 동일한 폴더에 동일한 type_acf, type_dist 사용시 기존 파일 삭제 후 저장됨
 
@@ -28,8 +28,8 @@
     type_cell = 1; % 1 for 3E cell, 2 for cylindrical cell (only for 3E_Sum)
     type_acf = 4; % 0 for full, 1 for anode, 2 for cathode, 3 for 3E_Sum, 4 for 3E_Simul
     type_anode = 2; %1 for blending, 2 for natural graphite 100%
-    type_dist = 2; % 0 for DRT, 1 for DDT, 2 for integrated
-    soc_integ = 0; % 0 for inactive, 1 for active
+    type_dist = 0; % 0 for DRT, 1 for DDT, 2 for integrated
+    soc_integ = 1; % 0 for inactive, 1 for active
 
     num_iter = 100; %P2D 최적화 과정 최대 반복 횟수
     num_iter_dist = 100; % Dist 최적화 과정 최대 반복 횟수

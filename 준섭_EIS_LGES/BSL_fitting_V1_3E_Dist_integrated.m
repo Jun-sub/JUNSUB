@@ -13,32 +13,45 @@
 
 
 clear; clc; close all
-% for n = 1:5 %for multilple acquisition of data
+
 %% Configurations
     % save_path = 'G:\공유 드라이브\Battery Software Lab\Projects\LGES 2023\발표 및 공유자료\10월 미팅자료\기존_3E_Dist_integ 데이터'; 
-    save_path = 'G:\공유 드라이브\Battery Software Lab\Projects\LGES 2023\발표 및 공유자료\10월 미팅자료\test';
-    save_check = 0; % 0: don't save, 1: save
+    save_path = 'C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\10월 미팅\Av_integ_V2\241205_Test_3(only linear Av)';
+    save_check = 1; % 0: don't save, 1: save
     % 주의: 동일한 폴더에 동일한 type_acf, type_dist 사용시 기존 파일 삭제 후 저장됨
+
+    % EIS data path
+    % for base case
+    path_folder = 'G:\공유 드라이브\BSL-Data\LGES\LG raw data\12_6cm2_soc10_EIS # Sample 1';%불러올 데이터 폴더 경로 지정
+    path_file = 'PEIS_C09_%s_cycle_soc%d.csv'; % %s: anode or cathode, %d: soc percent
+
+    % for anode blending
+    % path_folder = 'G:\공유 드라이브\BSL-Data\LGES\Modeling data_2차 음극 2종\processed_data';%불러올 데이터 폴더 경로 지정
+    % path_file = 'PEIS_C09_%s_cycle_soc%d.csv'; % %s: anode or cathode, %d: soc percent
+
+    % for anode Natural
+    % path_folder = 'G:\공유 드라이브\BSL-Data\LGES\Modeling data_2차 음극 2종\processed_data';%불러올 데이터 폴더 경로 지정
+    % path_file = 'PEIS_C09_%s_cycle_soc%d.csv'; % %s: anode or cathode, %d: soc percent
 
 % soc range 
     soc_start = 30;
     soc_end =30;
     soc_interval = 10;
     
-    multi_start = 40;
-    multi_end = 70;
-% EIS data path
-    path_folder = 'G:\공유 드라이브\BSL-Data\LGES\LG raw data\12_6cm2_soc10_EIS # Sample 1';%불러올 데이터 폴더 경로 지정
-    path_file = 'PEIS_C09_%s_cycle_soc%d.csv'; % %s: anode or cathode, %d: soc percent
+    multi_start = 20;
+    multi_end = 80;
 
 % Fitting configuration
     type_weight = 1; % 0 for absolute error, 1 for relative error
+
     type_acf = 4; % 0 for full, 1 for anode, 2 for cathode, 3 for 3E_sum, 4 for 3E_Simul
+    type_anode = 0; % 0 for base, 1 for blend, 2 for natural
+
     type_dist = 2; % 0 for DRT, 1 for DDT, 2 for integrated (DRT + DDT)
     soc_integ = 1; % 0: inactive 1: active
 
-    num_iter = 60; %P2D optimization max iter
-    num_iter_dist = 2; % Dist optimization max iter
+    num_iter = 150; %P2D optimization max iter
+    num_iter_dist = 50; % Dist optimization max iter
 
 % Temperature
     T = 298.15; %[K]
@@ -46,6 +59,7 @@ clear; clc; close all
 %-----------------------------이 아래로는 수정 불필요-------------------------%
     soc_vec = soc_start:soc_interval:soc_end; % fitting soc range
     multi_soc_range = multi_start:10:multi_end; % for soc integrate 
+    % multi_soc_range = [20:10:40 70 80];
     if ~exist('type_anode','var')
         type_anode = 0;
     end 
@@ -72,7 +86,7 @@ clear; clc; close all
    end 
 
     if type_acf == 0
-        cell_type = 'full'
+        cell_type = 'full';
     elseif type_acf == 1
         cell_type = 'Anode';
     elseif type_acf == 2
@@ -780,10 +794,59 @@ elseif type_acf == 4
         soc = SOC*0.01; % [1]
 
         if soc_integ == 1 && i == 1
-           [f_data, z_data_integ_sep, z_model_integ_sep, z_model_dist_integ_sep, paras_integ ,paras_integ_dist] = BSL_func_3E_calc_el_multi_soc(path_folder, path_file, multi_soc_range, cell_type, []);
+           [f_data, z_data_integ_sep, z_model_integ_sep, z_model_dist_integ_sep, paras_integ ,paras_integ_dist] = BSL_func_3E_calc_el_multi_soc_V2(path_folder, path_file, multi_soc_range, cell_type, []);
+           
            z_data_integ = z_data_integ_sep(:,1:end/2) + z_data_integ_sep(:,end/2+1:end);
            z_model_integ = z_model_integ_sep(:,1:end/2) + z_model_integ_sep(:,end/2+1:end);
            z_model_integ_dist = z_model_dist_integ_sep(:,1:end/2) + z_model_dist_integ_sep(:,end/2+1:end);
+
+           figure(length(multi_soc_range)*3) % for preventing of figure number overlap with main figure / Anode
+           t = tiledlayout(ceil(sqrt(length(multi_soc_range))),ceil(sqrt(length(multi_soc_range))),"TileSpacing","loose","Padding","loose");
+            for i = 1:length(multi_soc_range)
+                nexttile 
+                plot(z_data_integ_sep(:,2*i-1),-z_data_integ_sep(:,2*i), z_model_integ_sep(:,2*i-1),-z_model_integ_sep(:,2*i),z_model_dist_integ_sep(:,2*i-1),-z_model_dist_integ_sep(:,2*i))
+                legend(['z data' ' soc ' num2str(multi_soc_range(i))],['z model' ' soc ' num2str(multi_soc_range(i))],['z model dist' ' soc ' num2str(multi_soc_range(i))])
+                title('Anode')
+                axis equal 
+                set(gca,'Box','on',... %Axis Properties: BOX   
+                'PlotBoxAspectRatio',[1 1 1],... % Size - you can either use 'position' or 'dataaspectratio' or their combinations
+                'FontUnits','points','FontSize',10,'FontName','Times New Roman')
+                grid on;
+                xlabel('Z_{re} [Ohm]')
+                ylabel('-Z_{im} [Ohm]')
+            end
+
+            set(gcf,'Position',[100 100 1200 1200]);
+            figure(length(multi_soc_range)*4) % for preventing of figure number overlap with main figure / Cathode
+             t = tiledlayout(ceil(sqrt(length(multi_soc_range))),ceil(sqrt(length(multi_soc_range))),"TileSpacing","loose","Padding","loose");
+                for i = 1:length(multi_soc_range)
+                    nexttile 
+                    plot(z_data_integ_sep(:,2*(i+length(multi_soc_range))-1),-z_data_integ_sep(:,2*(i+length(multi_soc_range))), z_model_integ_sep(:,2*(i+length(multi_soc_range))-1),-z_model_integ_sep(:,2*(i+length(multi_soc_range))),z_model_dist_integ_sep(:,2*(i+length(multi_soc_range))-1),-z_model_dist_integ_sep(:,2*(i+length(multi_soc_range))))
+                    legend(['z data' ' soc ' num2str(multi_soc_range(i))],['z model' ' soc ' num2str(multi_soc_range(i))],['z model dist' ' soc ' num2str(multi_soc_range(i))])
+                    title('Cathode')
+                    axis equal
+                    set(gca,'Box','on',... %Axis Properties: BOX   
+                    'PlotBoxAspectRatio',[1 1 1],... % Size - you can either use 'position' or 'dataaspectratio' or their combinations
+                    'FontUnits','points','FontSize',10,'FontName','Times New Roman')
+                    grid on;
+                    xlabel('Z_{re} [Ohm]')
+                    ylabel('-Z_{im} [Ohm]')
+                end
+
+           set(gcf,'Position',[1300 100 1200 1200]);
+           pause(0.1); %for exhibit figure
+
+           if save_check == 1
+              figure(length(multi_soc_range)*3)
+              savefig(fullfile(save_path, sprintf(['Anode' ' P2D' ' + ' dist ' integ' ' .fig'],SOC)));
+
+              figure(length(multi_soc_range)*4)
+              savefig(fullfile(save_path, sprintf(['Cathode' ' P2D' ' + ' dist ' integ' '.fig'],SOC)));
+
+              save(fullfile(save_path, sprintf([cell_type ' P2D' ' + ' dist ' integ workspace' '.mat'],SOC)));
+           end 
+
+           
             for j = 1:length(multi_soc_range)
                 SOC = multi_soc_range(j);
                 figure(j) % for 3E_Simul
@@ -1251,4 +1314,3 @@ elseif type_acf == 4
             end
     clear Useless
 end
-% end

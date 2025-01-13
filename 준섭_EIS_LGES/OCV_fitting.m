@@ -60,7 +60,7 @@ para_ub = ones(size(para_0));
 % para_hat = para_0;
 
 % for n = 1:100
-options = optimoptions(@fmincon,'Display','iter','MaxIterations',100);
+options = optimoptions(@fmincon,'Display','iter','MaxIterations',100,'ConstraintTolerance',1e-7,'FunctionTolerance',1e-7,'StepTolerance',1e-12);
 
 fhandle_cost = @(para)func_cost(ocv(:,1),para,ocpp,ocpn,ocv(:,2));
 

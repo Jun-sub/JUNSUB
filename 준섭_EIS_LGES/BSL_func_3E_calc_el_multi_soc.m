@@ -385,10 +385,10 @@ elseif type_acf == 4
        fprintf('Start SOC integrated fitting \n')
     
     %% Call EIS model
-    factors_integ_ini = ones((length(factors_ini)-2)/2,2*length(multi_soc_range)); %factors will be apllied in integrated form
+    factors_integ_ini = ones((length(factors_ini)-2)/2,2*length(multi_soc_range)); %factors will be apllied in integrated form, 
+    %1 = R_itsc; 2 = i0; 3 = Cdl; 4 = Ds; 5 = Av; 6 = DRT_std; 7 = DDT_std
     factors_integ_ini(1:2,end+1) = [1;1]; % for Kel & Del
 
-    
     lb = factors_integ_ini*0.0001;
     ub = factors_integ_ini*1000;
     
@@ -424,40 +424,13 @@ elseif type_acf == 4
     
     [z_model_dist, paras_integ_dist] = BSL_func_EISmodel_V_3E_soc_and_Dist_integrated(f_data,factors_integ_hat_dist,multi_soc_range,T,type_acf,cell_type,type_dist);
     % z_model_dist = z_model_dist_sep(:,1:end/2) + z_model_dist_sep(:,end/2+1:end);
-    figure(length(multi_soc_range)*3) % for preventing of figure number overlap with main figure / Anode
-        t = tiledlayout(ceil(sqrt(length(multi_soc_range))),ceil(sqrt(length(multi_soc_range))),"TileSpacing","loose","Padding","loose");
-            for i = 1:length(multi_soc_range)
-                nexttile 
-                plot(z_integ_data(:,2*i-1),-z_integ_data(:,2*i), z_model(:,2*i-1),-z_model(:,2*i),z_model_dist(:,2*i-1),-z_model_dist(:,2*i))
-                legend(['z data' ' soc ' num2str(multi_soc_range(i))],['z model' ' soc ' num2str(multi_soc_range(i))],['z model dist' ' soc ' num2str(multi_soc_range(i))])
-                title('Anode')
-                axis equal
-                set(gca,'Box','on',... %Axis Properties: BOX   
-                'PlotBoxAspectRatio',[1 1 1],... % Size - you can either use 'position' or 'dataaspectratio' or their combinations
-                'FontUnits','points','FontSize',10,'FontName','Times New Roman')
-                grid on;
-                xlabel('Z_{re} [Ohm]')
-                ylabel('-Z_{im} [Ohm]')
-            end
+    
 
-    set(gcf,'Position',[100 100 1200 1200]);
-    figure(length(multi_soc_range)*4) % for preventing of figure number overlap with main figure / Cathode
-     t = tiledlayout(ceil(sqrt(length(multi_soc_range))),ceil(sqrt(length(multi_soc_range))),"TileSpacing","loose","Padding","loose");
-            for i = 1:length(multi_soc_range)
-                nexttile 
-                plot(z_integ_data(:,2*(i+length(multi_soc_range))-1),-z_integ_data(:,2*(i+length(multi_soc_range))), z_model(:,2*(i+length(multi_soc_range))-1),-z_model(:,2*(i+length(multi_soc_range))),z_model_dist(:,2*(i+length(multi_soc_range))-1),-z_model_dist(:,2*(i+length(multi_soc_range))))
-                legend(['z data' ' soc ' num2str(multi_soc_range(i))],['z model' ' soc ' num2str(multi_soc_range(i))],['z model dist' ' soc ' num2str(multi_soc_range(i))])
-                title('Cathode')
-                axis equal
-                set(gca,'Box','on',... %Axis Properties: BOX   
-                'PlotBoxAspectRatio',[1 1 1],... % Size - you can either use 'position' or 'dataaspectratio' or their combinations
-                'FontUnits','points','FontSize',10,'FontName','Times New Roman')
-                grid on;
-                xlabel('Z_{re} [Ohm]')
-                ylabel('-Z_{im} [Ohm]')
-            end
+    assignin("base", "f_data",f_data)
+    assignin("base","factors_integ_hat",factors_integ_hat)
+    assignin("base","factors_integ_hat_dist",factors_integ_hat_dist)
 
-    set(gcf,'Position',[1300 100 1200 1200]);
+    
 
     % Kel_factor_hat = factors_integ_hat_dist(1,end);
     % Del_factor_hat = factors_integ_hat_dist(2,end);

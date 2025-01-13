@@ -73,12 +73,12 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
 
     % DRT Distribution parameters % LGES V2 2024 05 % HERE - ADD FACTORS
     mean_drt_ra = 1;                        mean_drt_rc = 1;
-    std_drt_ra = factors(end-1,i);                       std_drt_rc = factors(end-1,i+length(multi_soc_range));      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
+    std_drt_ra = factors(6,i);                       std_drt_rc = factors(6,i+length(multi_soc_range));      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
     [mu_drt_ra,sig_drt_ra] = normal_para(mean_drt_ra,std_drt_ra); [mu_drt_rc,sig_drt_rc] = normal_para(mean_drt_rc,std_drt_rc); % converting them to parameters of underlying normal distribution
 
     % DDT Distribution parameters % LGES V2 2024 05 % HERE - ADD FACTORS
     mean_ddt_ra = 1;                        mean_ddt_rc = 1;
-    std_ddt_ra = factors(end,i);                       std_ddt_rc = factors(end,i+length(multi_soc_range));      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
+    std_ddt_ra = factors(7,i);                       std_ddt_rc = factors(7,i+length(multi_soc_range));      % [*+*] thse are parameters for observed lognormal distribution, dimensionless
     [mu_ddt_ra,sig_ddt_ra] = normal_para(mean_ddt_ra,std_ddt_ra); [mu_ddt_rc,sig_ddt_rc] = normal_para(mean_ddt_rc,std_ddt_rc); % converting them to parameters of underlying normal distributio
 
     % Porous electrode
@@ -90,12 +90,20 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
     end
     bruga = 1.44;                       brugc = 1.44;   % {modified}
-    epsla =   0.237;                    epslc = 0.234;         % {modified} void fraction LGES 2024 02
+
+    % epsla =   0.237;                    epslc = 0.234;         % {modified} void fraction LGES 2024 02
+
+    if factors(5,2*length(multi_soc_range)+1) == 0 %for 3E_calc_el_multi_soc_V1
+        epsla =   0.237;                    epslc = 0.234;         % {modified} void fraction LGES 2024 02
+    elseif factors(5,2*length(multi_soc_range)+1) ~= 0 %for 3E_calc_el_multi_soc_V2 
+        epsla =   factors(5,2*length(multi_soc_range)+1);     epslc = 0.234;          % {modified} void fraction LGES 2024 02
+    end 
+
     n_am1_vf =    0.977;                p_am1_vf = 0.9792;     % {modified}LGES 2024 02
     epssa =   (1-epsla)*n_am1_vf;       epssc = (1-epslc)*p_am1_vf;  % {modified}
     taua = epsla^(-bruga);              tauc = epslc^(-brugc);    %{modifed} tortuosity of electrodes.
     if type_anode == 0
-    sigmaa = 100;                       sigmac = 3800;            % [S/m] this is the solid phase conductivity
+    sigmaa = 5.6022e+03;                     sigmac = 24.2718;             % [S/m] this is the solid phase conductivity
     elseif type_anode == 1
     sigmaa = 4.2088e+03;                     sigmac = 24.2718;            % [S/m] this is the solid phase conductivity
     elseif type_anode == 2
@@ -108,7 +116,7 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
 
     % Electrolyte and Separator
     c_e = 1120;                 % {modified} [mol/m3] Initial electrolyte concentration
-    Di0 = factors(2,end)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter]
+    Di0 = factors(2,2*length(multi_soc_range)+1)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter]
     epsls = 0.5;               % OK
     Lsep = 12.5e-6;              % OK % LGES 2024 02
     F = 96487;                  % OK
@@ -121,7 +129,7 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     % fc = 1.32;                
     % dfdx =1.7e-3;
     dlnfdlnc = (0.601-0.24*(c_e/(1000))^0.5+0.982*(1-0.0052*(T-298.15))*(c_e/(1000))^1.5)/(1-0.363)-1; % {modified} replacing f and dfdc
-    kappa= factors(1,end)*kappae_function(c_e/1000,T);                 % {modified} c_e input in [mol/liter] 
+    kappa= factors(1,2*length(multi_soc_range)+1)*kappae_function(c_e/1000,T);                 % {modified} c_e input in [mol/liter] 
 
 
     %% 
@@ -131,9 +139,41 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     i0a = F*ka*((c_e/c_e_ref)^alphaa)*((cta-cs0a)^alphaa)*cs0a^alphac;                    % {modified} c_e_ref
     i0c = F*kc*((c_e/c_e_ref)^alphaa)*((ctc-cs0c)^alphaa)*cs0c^alphac;                    % {modified} c_e_ref
     
-    aa =factors(5,i)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
-    ac =factors(5,i+length(multi_soc_range))*3*epssc/Rpc;
+    a_n1 = factors(1,2*length(multi_soc_range)+2); %a_n is stand for anode expansion gradient
+    a_n2 = factors(2,2*length(multi_soc_range)+2);
+    a_n3 = factors(3,2*length(multi_soc_range)+2);
+    a_n4 = factors(4,2*length(multi_soc_range)+2);
+    a_n5 = factors(5,2*length(multi_soc_range)+2);
+
+    a_p = factors(6,2*length(multi_soc_range)+2); %a_p is stand for cathode expansion gradient
+
+    % aa =factors(5,i)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
+    % ac =factors(5,i+length(multi_soc_range))*3*epssc/Rpc;
     
+    if factors(3,2*length(multi_soc_range)+1) == 0 %3E_calc_el_multi_soc_V1
+       aa =factors(5,i)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
+       ac =factors(5,i+length(multi_soc_range))*3*epssc/Rpc;
+
+    elseif factors(3,2*length(multi_soc_range)+1) ~= 0 %for 3E_calc_el_multi_soc_V2
+       aa =factors(3,2*length(multi_soc_range)+1)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
+       ac =factors(4,2*length(multi_soc_range)+1)*3*epssc/Rpc;
+
+       % if (soc < 0.12) % Anode specific sueface area decreases upon soc
+       %    aa = aa*(1 - a_n1*soc); 
+       % elseif (0.12 <= soc) && (soc < 0.18)
+       %    aa = aa*(1 - a_n2*soc); 
+       % elseif (0.18 <= soc) && (soc < 0.24)
+       %    aa = aa*(1 - a_n3*soc); 
+       % elseif (0.24 <= soc) && (soc < 0.50)
+       %    aa = aa*(1 - a_n4*soc);  
+       % elseif (0.50 <= soc)
+       %    aa = aa*(1 - a_n5*soc);  
+       % end 
+       
+       aa = aa*(1 - a_n5*soc);
+       ac = ac*(1 + a_p*soc); % Cathode specific sueface area increases upon soc
+    end
+
     sigmaeffa =(epssa/taua)*sigmaa; % {modified} all Bruggman relationships are modified.
     sigmaeffc =(epssc/tauc)*sigmac;
     
@@ -157,6 +197,14 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     elseif (plateau3_start <= soc) && (soc <= plateau3_end) % 0.51 - 00.98
        dUdca = (1/cta)*(Ua_function_v2(plateau3_end,chg) - Ua_function_v2(plateau3_start,chg))/(plateau3_end-plateau3_start);
     end   
+ 
+    % if (0.07 <= soc) && (soc <= 0.1) %soc 0.07 - 0.1
+    %    dUdca = (1/cta)*(Ua_function_v2(0.1,chg) - Ua_function_v2(0.07,chg))/(0.1-0.07);
+    % elseif (0.22 <= soc) && (soc <= plateau2_end) % soc 0.18 - 0.50
+    %    dUdca = (1/cta)*(Ua_function_v2(plateau2_end,chg) - Ua_function_v2(0.22,chg))/(plateau2_end-0.22);
+    % elseif (plateau3_start <= soc) && (soc <= 0.99) % 0.51 - 00.98
+    %    dUdca = (1/cta)*(Ua_function_v2(0.99,chg) - Ua_function_v2(plateau3_start,chg))/(0.99-plateau3_start);
+    % end 
 %% Calculation
 
 
@@ -314,6 +362,8 @@ parasa(:,i) = [R_itsca(i), i0a, Cdla, Dsa, aa]';
 parasc(:,i) = [R_itscc(i), i0c, Cdlc, Dsc, ac, std_drt_ra,std_ddt_ra, std_drt_rc,std_ddt_rc]';
     end 
 
+Av_grad_dist = [a_n1 a_n2 a_n3 a_n4 a_n5 0 a_p]';
+assignin('base',"Av_grad_dist",Av_grad_dist)
 % toc;
 % w_vector = omegagen/(2*pi()); % into [Hz] from [rad] [v6] - taking from input
 %cathode = cathode_impedance(1:N);
@@ -400,7 +450,7 @@ elseif type_acf == 4 % 3E_Simul
             output(:,2*i) = (1/A_coat)*imag(a_imp(:,i));
             output(:,2*(i+length(multi_soc_range))) = (1/A_coat)*imag(c_imp(:,i));
 
-            paras(:,i) = [parasa(:,i);parasc(:,i); kappa; Di0];
+            paras(:,i) = [parasa(:,i);parasc(:,i); kappa; Di0; epsla;]; 
         end
 else
     error('select anode (1), cathode (2), 3E_Sum (3), 3E_Simul (4)')

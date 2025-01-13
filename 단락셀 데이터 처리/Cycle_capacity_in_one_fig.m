@@ -1,6 +1,6 @@
 clc; clear; close all;
 
-folder_path = 'G:\공유 드라이브\BSL-Data\카이스트_단락셀\카이스트 단락셀\2차 셀 데이터\Aging\사이클 데이터';
+folder_path = 'G:\공유 드라이브\BSL-Data\카이스트_단락셀\카이스트 단락셀\3차 셀 데이터\Ref_txt';
 
 folder = dir(folder_path);
 
@@ -12,7 +12,7 @@ cmap = jet(20); %colormap for dot
 figure
 hold on;
 tic
-for i = 3:length(folder)
+for i = 3:5 %length(folder)
     data_path = fullfile(folder_path, folder(i).name);
     data = readtable(data_path,"FileType","text", 'NumHeaderLines',11,'ReadVariableNames',false);
     

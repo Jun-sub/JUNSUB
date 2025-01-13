@@ -1,27 +1,38 @@
 % 충전 용량, 방전 용량 동시
 clear; clc; close all;
 
-folder = 'G:\공유 드라이브\BSL-Data\카이스트_단락셀\카이스트 단락셀\2차 셀 데이터\Aging\사이클 데이터';
+folder = 'G:\공유 드라이브\BSL-Data\카이스트_단락셀\카이스트 단락셀\3차 셀 데이터\Ref_cycle_txt';
 files = dir(folder);
+
+folder_2 = 'G:\공유 드라이브\BSL-Data\카이스트_단락셀\카이스트 단락셀\3차 셀 데이터\Ref_txt';
+files_2 = dir(folder_2);
 
 tic; 
 % 모든 파일에 대해 반복
+figure
+t = tiledlayout(6,6,"TileSpacing","tight","Padding","tight");
 for k = 3:length(files)
+    nexttile
     FileName = files(k).name;
+    FileName_2 = files_2(k).name;
+
     data_path = fullfile(folder, FileName);
+    data_path_2 = fullfile(folder_2, FileName_2);
     
     data = readtable(data_path, "FileType","text",'NumHeaderLines', 11, 'ReadVariableNames', false);
-    
+    data_2 = readtable(data_path_2, "FileType","text",'NumHeaderLines', 11, 'ReadVariableNames', false);
+
     % 두 번째 컬럼이 사이클, 세 번째 컬럼이 충전 용량, 네 번째 컬럼이 방전 용량
     cycle = data.Var2;
     charge_capacity = data.Var3;
     discharge_capacity = data.Var4;
-
+    last_cycle_time = data_2.Var2(end);
+    
     % 사이클 번호
     unique_cycles = unique(cycle);
     
     % Figure 초기화
-    figure;
+    % figure;
     hold on;
     
     % 사이클별로 그래프 그리기
@@ -43,8 +54,9 @@ for k = 3:length(files)
         idx = cycle == current_cycle;
        
         % 그래프 그리기
-        plot(cycle(idx), charge_capacity(idx), 'bo', 'MarkerFaceColor','b');
-        plot(cycle(idx), discharge_capacity(idx), 'ro', 'MarkerFaceColor','r');
+        % plot(cycle(idx), charge_capacity(idx), 'bo', 'MarkerFaceColor','b');
+        plot(cycle(idx), discharge_capacity(idx), 'ro', 'MarkerFaceColor','r','MarkerSize',3);
+        plot(seconds(last_cycle_time)/(24*60*60),discharge_capacity(end),'')
     end
 
     % 사이클 건너뛸 경우에 대한 처리
@@ -54,13 +66,17 @@ for k = 3:length(files)
     
     xlabel('Cycle Number');
     ylabel('Capacity [Ah]');
-    title(strjoin(strsplit(FileName,'_'),' '));
+    title_name = strsplit(FileName,'_');
+    title(strjoin(title_name(1:2),'_'));
     grid on;
     box on;
-    xlim([min(cycle)-1, max(cycle)])
-    xticks(min(cycle)-1:1:max(cycle));
+    xlim([min(cycle)-2, max(cycle)+4])
+    % xticks(min(cycle)-1:1:max(cycle));
     hold off;
-    legend('Charge','Discharge','Location','Southwest');
-   
+    % legend('Charge','Discharge','Location','best');
+    legend(['Discharge ',num2str(max(cycle))],[num2str(seconds(last_cycle_time)/(24*60*60)) ' day'],'Location','best');
+    set(gca,'PlotBoxAspectRatio', [1 1 1])
 end
+
+set(gcf,"Position",[100 100 1200 1200])
 toc;

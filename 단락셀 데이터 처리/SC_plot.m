@@ -3,10 +3,10 @@ clc;, clear all;, close;
 
 % Sample: 
 % 폴더 지정하면 각 파일 분류할 수 있게.
-full_folder_path = 'C:\Users\admin\Desktop\켄텍 서류\Matlab\단락셀\단락셀_1차 실패 데이터'
+full_folder_path = 'G:\공유 드라이브\BSL-Data\카이스트_단락셀\카이스트 단락셀\3차 셀 데이터\Ref_txt'
 full_folder = dir(full_folder_path);
 
-for i = 3:18
+for i = 3:5 %18
 folder_path = ([full_folder_path filesep full_folder(i).name]);
 folder = dir(fullfile(folder_path, '*.txt'));
 

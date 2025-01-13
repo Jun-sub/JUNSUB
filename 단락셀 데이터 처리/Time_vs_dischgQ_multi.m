@@ -1,7 +1,7 @@
 clear; clc; close all;
 
 %순서: 0인 데이터 trim --> 데이터 스텝별 나누기 --> 시간 플랏
-folder = 'G:\공유 드라이브\BSL-Data\카이스트_단락셀\카이스트 단락셀\2차 셀 데이터\Aging';
+folder = 'G:\공유 드라이브\BSL-Data\카이스트_단락셀\카이스트 단락셀\3차 셀 데이터\Ref_txt';
 files = dir(folder);
 
 % files = files(19:23,:);  %부분별 플랏할 때 사용
@@ -11,7 +11,7 @@ cline = [0.8 0 0.2];
 tic_overall = tic;
 figure() %time vs Q
 hold on;
-for i = 3:length(files) %3:length(files)-1
+for i = 3:5 %length(files) %3:length(files)-1
 % clear time_sum; clear Q_sum
     tic_cycle = tic;
     
