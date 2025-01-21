@@ -171,14 +171,14 @@ type_acf = evalin("base",'type_acf'); %Call type_acf by evalin for preventing er
     factors_integ_ini = ones((length(factors_ini)-2)/2,2*length(multi_soc_range)); %factors will be apllied in integrated form, 
     %1 = R_itsc; 2 = i0; 3 = Cdl; 4 = Ds; 5 = Av; 6 = DRT_std; 7 = DDT_std,
     %temp 8 = Kel; 9 = Del;
-    factors_integ_ini(1:6,2*length(multi_soc_range)+1) = [1;1;1;1;4.098543764913605e-06;4.098543764913605e-06]; % for Kela; Del ; Av_n; Av_p; y_shift1(0-0.6); y_shift2(0.61-1)
-    factors_integ_ini(1:6,2*length(multi_soc_range)+2) = [1;1;1;1;1;1]; %for L1(anode); L2(Cathode);[];[];a_n5;a_p
+    factors_integ_ini(1:6,2*length(multi_soc_range)+1) = [1;1;1;1;4.098543764913605e-06;4.098543764913605e-06]; % for Kela; [] ; []; []; y_shift1(0-0.6); y_shift2(0.61-1)
+    factors_integ_ini(1:6,2*length(multi_soc_range)+2) = [1;1;1;1;1;1]; %for L1(anode); L2(Cathode);Dela;Delc;a_n5;a_p
 
-    % factors_integ_ini(8:9,:) = 1; %respect Kel; Del upon soc & electrode
+    factors_integ_ini(8:11,:) = 1; %respect Dela;Delc;Delsa;Delsc upon soc & electrode
     %1:length(multi_soc) = anode, length(multi_soc)+1:2*length(multi_soc) = cathode
 
     % temporary for test
-    % load("C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\12월 미팅\dUdc_adjust_test\workspace_natural.mat")
+    % load("G:\공유 드라이브\Battery Software Lab\Projects\LGES 2023\발표 및 공유자료\최종 보고서\Half_L\Natural\Multi_soc\Workspace_multi_soc.mat")
     % factors_integ_ini = factors_integ_hat;
     % 
     % options= optimset('Display','iter','MaxIter',10,'MaxFunEvals',1e6,...
@@ -189,12 +189,8 @@ type_acf = evalin("base",'type_acf'); %Call type_acf by evalin for preventing er
     ub = factors_integ_ini*1000;
     
     % Linear gradient lb & ub 
-    lb(1:6,2*length(multi_soc_range)+2) = 0; % for gradient
-    ub(1:6,2*length(multi_soc_range)+2) = 30;
-    
-    % % Kel & Del lb & ub
-    % lb(8:9,:) = 0.0001; % for Kel, Del
-    % ub(8:9,:) = 2000;
+    lb(3:4,2*length(multi_soc_range)+1) = 0; % for gradient
+    ub(3:4,2*length(multi_soc_range)+1) = 30;
     
     weighted_model = @(factors,f_data)BSL_func_soc_integrated_model_V_final2_3E(f_data,factors,multi_soc_range,T,type_acf,cell_type).*weight;
     weighted_data = z_integ_data.*weight;
@@ -211,7 +207,7 @@ type_acf = evalin("base",'type_acf'); %Call type_acf by evalin for preventing er
     %% Call EIS + Dist model 
     type_dist = evalin('base','type_dist');
     
-    factors_integ_ini_dist(1:6,1:2*length(multi_soc_range)+2) = factors_integ_hat;
+    factors_integ_ini_dist(1:11,1:2*length(multi_soc_range)+2) = factors_integ_hat;
     factors_integ_ini_dist(6:7,1:2*length(multi_soc_range)) = 0.5; % set initial drt & ddt Std
     
     weighted_model_dist = @(factors,f_data)BSL_func_EISmodel_V_final2_3E_soc_and_Dist_integrated(f_data,factors,multi_soc_range,T,type_acf,cell_type,type_dist).*weight;
@@ -228,23 +224,24 @@ type_acf = evalin("base",'type_acf'); %Call type_acf by evalin for preventing er
     lb(6:7,1:2*length(multi_soc_range)) = 0.01;
     ub(6:7,1:2*length(multi_soc_range)) = 5;
 
-    lb(5,1:2*length(multi_soc_range)) = 0; % for gradient
-    ub(5,1:2*length(multi_soc_range)) = 30;
+    lb(3:4,2*length(multi_soc_range)+1) = 0; % for gradient
+    ub(3:4,2*length(multi_soc_range)+1) = 30;
 
 
     fprintf('Start SOC integrated + Dist fitting \n')
-    % tic;
-    %    factors_integ_hat_dist = lsqcurvefit(weighted_model_dist,factors_integ_ini_dist,f_data,weighted_data, lb, ub, options_dist);
-    % toc;
+    tic;
+       factors_integ_hat_dist = lsqcurvefit(weighted_model_dist,factors_integ_ini_dist,f_data,weighted_data, lb, ub, options_dist);
+    toc;
     
     %-----tentative
-    factors_integ_hat_dist = factors_integ_ini_dist;
+    % factors_integ_hat_dist = factors_integ_ini_dist;
 
     % factors_integ_hat_dist(9,length(multi_soc_range)+1:2*length(multi_soc_range)) = factors_integ_hat_dist(9,1:length(multi_soc_range));
 
     [z_model_dist, paras_integ_dist] = BSL_func_EISmodel_V_final2_3E_soc_and_Dist_integrated(f_data,factors_integ_hat_dist,multi_soc_range,T,type_acf,cell_type,type_dist);
     % z_model_dist = z_model_dist_sep(:,1:end/2) + z_model_dist_sep(:,end/2+1:end);
     
+    % [z_model_dist, paras_integ_dist] = BSL_func_soc_integrated_model_V_final2_3E(f_data,factors_integ_hat,multi_soc_range,T,type_acf,cell_type);
 
     assignin("base", "f_data","f_data")
     assignin("base","factors_integ_hat",factors_integ_hat)

@@ -1,5 +1,5 @@
 %% 
-% This function 
+% This function dl
 % (1) finds the best-fit parameters for a halfcells calls a EIS model function
 % (2) improve fitting result by addapting additional distribution model
 
@@ -14,21 +14,21 @@
 
 %% Configurations
 % soc range 
-    soc_vec = 30; %0:10:100;
+    soc_vec = 20:10:80;
     % fitting할 soc 범위 지정, 0~100%, 10% 단위
     % 단일 SOC에 대해 진행할 경우 단일 SOC값만 입력. 
     
-    save_path = 'G:\공유 드라이브\Battery Software Lab\Projects\LGES 2023\발표 및 공유자료\최종 보고서\Half_L\Natural'; %파라미터 결과 저장 폴더 경로 지정 
+    save_path = 'G:\공유 드라이브\Battery Software Lab\Projects\LGES 2023\발표 및 공유자료\최종 보고서\Half_L\Del_separation 이전\Blend\Cathode'; %파라미터 결과 저장 폴더 경로 지정 
     save_check = 1; % 피규어 및 파라미터 데이터 저장 유무 선택, 0이면 결과 저장 x, 1이면 결과 저장 O
     % 주의: 동일한 폴더에 동일한 type_acf, type_dist 사용시 기존 파일 삭제 후 저장됨
 
 % Fitting configuration
     type_weight = 1; % 0 for absolute error, 1 for relative error
-    type_acf = 1; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
+    type_acf = 2; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
     type_dist = 2; % 0 for DRT, 1 for DDT, 2 for integrated
-    type_anode = 1; % 0 for base, 1 for natural 2 for blend
+    type_anode = 2; % 0 for base, 1 for natural 2 for blend
     num_iter = 100; %P2D 최적화 과정 최대 반복 횟수
-    num_iter_dist = 10; % Dist 최적화 과정 최대 반복 횟수
+    num_iter_dist = 100; % Dist 최적화 과정 최대 반복 횟수
 
 % EIS data path
     if type_anode == 0
@@ -63,9 +63,9 @@
     disp(dist);
 
     if type_acf == 1
-        cell_type = 'Anode';
+        cell_type = 'Anode'
     elseif type_acf == 2
-        cell_type = 'Cathode';
+        cell_type = 'Cathode'
     elseif type_acf == 3
         cell_type = 'Full'; %현재 코드에선 구현 X
     end 
@@ -75,6 +75,16 @@
         'TolFun',1e-10,'TolX',1e-10,'FinDiffType','central');
     options_dist= optimset('Display','iter','MaxIter',num_iter_dist,'MaxFunEvals',1e5,...
         'TolFun',1e-10,'TolX',1e-10,'FinDiffType','central');
+
+%Fitting start
+%parameter vectorization for save
+para_sum = ones(10,length(soc_vec));
+para_sum_dist = ones(12,length(soc_vec));
+
+factors_hat_sum = ones(12,length(soc_vec));
+factors_hat_dist_sum = ones(14,length(soc_vec));
+
+for i = 1:length(soc_vec)
 % Parameters 
     bounds = [...
          0.05 20 % (1) R_itsc
@@ -82,19 +92,20 @@
          0.1 50; % (3) C_dl
          0.1 50; % (4) Ds
          0.1 50; % (5) kappa_el
-         0.1 50; % (6) D_el
+         0.1 50; % (6) D_ela
          0.1 50; % (7) Av
          0.1 10; % (8) Inductance (Henry)
          0.1 10; % (9) y_shift
+         0.1 50; % (10) D_elc
+         0.1 50; % (11) D_els
          ]; 
-    lb = bounds(:,1)*0.00001;
-    ub = bounds(:,2)*10000;
 
-    factors_ini = [1 1 1 1 1 1 1 1 1];
+    
+    lb = bounds(:,1)*0.1;
+    ub = bounds(:,2)*10;
 
-%Fitting start
-para_sum = [];
-for i = 1:length(soc_vec)
+    factors_ini = [1 1 1 1 1 1 1 1 1 1 1];
+
 
     SOC = soc_vec(i);
     name_file = sprintf(path_file, cell_type, SOC); 
@@ -128,11 +139,12 @@ for i = 1:length(soc_vec)
     xlabel('Z_{re} [Ohm]')
     ylabel('-Z_{im} [Ohm]')
 
-    % trim the high-frequency inductance part
+    %% trim the high-frequency inductance part
     % f_data = f_data(z_im_data<=0);
     % z_re_data = z_re_data(z_im_data<=0);
     % z_im_data = z_im_data(z_im_data<=0);
     % z_data = [z_re_data z_im_data];
+
     figure(1)
     plot(z_re_data,-z_im_data,'o'); hold on; grid on
 
@@ -219,8 +231,8 @@ fprintf(['Start P2D + ' dist ' fitting \n'])
 std_ini = 0.5;
 factors_ini = [factors_hat std_ini std_ini]; % drt, ddt 분포 각각 고려
 
-ub = factors_ini*10;
-lb = factors_ini*0.1;
+ub = factors_ini*100;
+lb = factors_ini*0.01;
 
 ub(end-1:end) = 5; %DRT&DDT Std
 lb(end-1:end) = 0.01; %DRT&DDT Std
@@ -242,7 +254,7 @@ fprintf(['P2D + ' dist ' fitting has successfully completed \n'])
 % Nyquist Plot
 figure(4)
 t = tiledlayout(1,2,"TileSpacing","compact",'Padding','compact');
-nexttile
+nexttile(1)
 plot(z_data(:,1),-z_data(:,2),'ok','linewidth',1); hold on
 plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
 plot(z_model2(:,1),-z_model2(:,2),'o','linewidth',1,'Color',[0.3010 0.7450 0.9330])
@@ -262,7 +274,7 @@ hold off
 
 
 % Zoom-in semicircle
-nexttile
+nexttile(2)
 plot(z_data(:,1),-z_data(:,2),'ok','linewidth',1); hold on
 plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
 plot(z_model2(:,1),-z_model2(:,2),'o','linewidth',1,'Color',[0.3010 0.7450 0.9330])
@@ -282,4 +294,28 @@ legend('Exp Data','P2D',['P2D' ' + ' dist])
 hold off;
 
 set(gcf,'position',[1400 600 1000 500])
+
+para_sum(1,i) = SOC;
+para_sum(2:10,i) = paras1;
+
+para_sum_dist(1,i) = SOC;
+para_sum_dist(2:12,i) = paras2;
+
+factors_hat_sum(1,i) = SOC;
+factors_hat_sum(2:12,i) = factors_hat';
+
+factors_hat_dist_sum(1,i) = SOC;
+factors_hat_dist_sum(2:14,i) = factors_hat_dist';
+
+if save_check == 1
+   savefig(fullfile(save_path,[cell_type num2str(soc_vec(i))]))
+
+   disp('Data saved successfully')
+else 
+   disp('Data is not saved')
+end 
 end
+
+if save_check == 1
+   save(fullfile(save_path,'workspace'))
+end 

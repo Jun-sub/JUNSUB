@@ -15,7 +15,7 @@ A_coat = 12.6*2/10000; % % [m2] % LGES 2024 02
 R_itsc = factors(1)*0.0755; % [Ohm] % LGES 2024 02
 
 addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\interpolations')
-
+type_anode = evalin('base','type_anode');
     
 %% Thernodynamic Configs
 
@@ -36,7 +36,15 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     % Particle parameters
     Rfa = 0;                            Rfc = 0;        % {modified} [v6b - anode film *+*] [Ohm.m2]
     C_filma = 0;                        C_filmc = 0;    % {modified}  [v6b - anode film *+*] [F/m2]
-    Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02
+
+    if type_anode == 0
+       Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, Base
+    elseif type_anode == 1
+       Rpa =  (17.8)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, Natural
+    elseif type_anode == 2
+       Rpa =  (16.5)*1e-6;              Rpc = (10)*1e-6;     % [um] Radius of particles  % LGES 2024 02, Blending
+    end
+
     Dsa = factors(4)*Dsa_function(x,T);      Dsc = factors(4)*Dsc_function(y,T); % {modified} [m^2/sec]      
     Cdla =  factors(3)*0.2;             Cdlc = factors(3)*0.2;             % [F/m2]     
     cta = 29626;                        ctc = 48786;            % [mol/m3]
@@ -57,13 +65,28 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     [mu_ddt_ra,sig_ddt_ra] = normal_para(mean_ddt_ra,std_ddt_ra); [mu_ddt_rc,sig_ddt_rc] = normal_para(mean_ddt_rc,std_ddt_rc); % converting them to parameters of underlying normal distribution
 
     % Porous electrode
+    if type_anode == 0
     La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    elseif type_anode == 1
+    La = 79e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    elseif type_anode == 2
+    La = 77e-6;                         Lc = 60.0e-6;           % [m] LGES 2024 02
+    end
+
     bruga = 1.44;                       brugc = 1.44;   % {modified}
     epsla =   0.237;                    epslc = 0.234;         % {modified} void fraction LGES 2024 02
     n_am1_vf =    0.977;                p_am1_vf = 0.9792;     % {modified}LGES 2024 02
     epssa =   (1-epsla)*n_am1_vf;       epssc = (1-epslc)*p_am1_vf;  % {modified}
     taua = epsla^(-bruga);              tauc = epslc^(-brugc);    %{modifed} tortuosity of electrodes.
-    sigmaa = 100;                       sigmac = 3800;            % [S/m] this is the solid phase conductivity
+
+    if type_anode == 0
+    sigmaa = 5.6022e+03;                     sigmac = 24.2718;             % [S/m] this is the solid phase conductivity
+    elseif type_anode == 1
+    sigmaa = 5.6022e+03;                     sigmac = 24.2718;            % [S/m] this is the solid phase conductivity
+    elseif type_anode == 2
+    sigmaa = 4.2088e+03;                     sigmac = 24.2718;            % [S/m] this is the solid phase conductivity
+    end
+
     cs0a = x*cta;                       cs0c = y*ctc;     % OK
     alphaa = 0.5;                       % same alphaa           % OK                     
     alphac = 0.5;                       % same alphac           % OK
@@ -84,8 +107,17 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     % dfdx =1.7e-3;
     dlnfdlnc = (0.601-0.24*(c_e/(1000))^0.5+0.982*(1-0.0052*(T-298.15))*(c_e/(1000))^1.5)/(1-0.363)-1; % {modified} replacing f and dfd
     
-    Di0 = factors(6)*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
-    kappa= factors(5)*kappae_function(c_e/1000,T); % {modified} c_e input in [mol/liter] 
+    Di0a = factors(6)*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
+    Di0c = factors(6)*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
+    Di0s = factors(6)*De_function(c_e/1000,T); % {modified} [m2/s] c_e input concentration in [mol/liter]
+
+    Di0 = [Di0a Di0c Di0s];
+
+   if type_acf == 1
+       kappa= 1; %factors(5)*kappae_function(c_e/1000,T); % {modified} c_e input in [mol/liter] 
+   elseif type_acf == 2
+       kappa= 4.2; %factors(5)*kappae_function(c_e/1000,T); % {modified} c_e input in [mol/liter] 
+   end 
    
     %% 
 % Parameter Expressions
@@ -103,9 +135,9 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     kappaeffc = (epslc/tauc)*kappa;
     kappaeffs = (epsls/taus)*kappa;
     
-    Dieffa = (epsla/taua)*Di0;
-    Dieffc = (epslc/tauc)*Di0;
-    Dieffs = (epsls/taus)*Di0;
+    Dieffa = (epsla/taua)*Di0a;
+    Dieffc = (epslc/tauc)*Di0c;
+    Dieffs = (epsls/taus)*Di0s;
     
     dx = 0.0001; % finite difference step size.
     % dx = 0.01; % finite difference step size.
@@ -116,7 +148,7 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
 
     % dUdc is applied directly in soc scale in v3
     dUdcc = -((1/ctc)*(Uc_function_v3(soc+dx) - Uc_function_v3(soc-dx))/(2*dx));   % {modified}
-    dUdca = ((1/cta)*(Ua_function_v3(soc+dx) - Ua_function_v3(soc-dx))/(2*dx))-4.098543764913605e-06;
+    dUdca = ((1/cta)*(Ua_function_v3(soc+dx) - Ua_function_v3(soc-dx))/(2*dx))-factors(9)*4.098543764913605e-06;
 
 %% Calculation
 
@@ -261,6 +293,8 @@ phi1x1a = - La^3*aa*F*betaa/sigmaeffa^2*((sa-lambda1a)*C_1_a/B1a/lambda1a+(sa-la
 
 c_imp(k) = (L*spc) -(phi1x1c-phi2_sep_xs_1)/iapp;
 a_imp(k) = (L*spa) -(phi2_sep_xs_0-phi1x1a)/iapp;
+
+% a_imp(k) = -(phi2_sep_xs_0-phi1x1a)/iapp;
 s_imp(k) = -(phi2_sep_xs_1-phi2_sep_xs_0)/iapp;
 fc_imp(k) = -(phi1x1c-phi1x1a)/iapp;
 
@@ -342,7 +376,7 @@ assignin("base","sig_ddt_ra",sig_ddt_ra);
 
 if type_acf ==1 % anode
     output = [R_itsc+(1/A_coat)*real(a_imp.'),(1/A_coat)*imag(a_imp.')];
-    paras =[R_itsc, i0a, Cdla, Dsa, kappa, Di0, aa, std_drt_ra,std_ddt_ra]';
+     paras =[R_itsc, i0a, Cdla, Dsa, kappa, Di0, aa, std_drt_ra,std_ddt_ra]';
 elseif type_acf ==2 % cathode
     output = [R_itsc+(1/A_coat)*real(c_imp.'),(1/A_coat)*imag(c_imp.')];
     paras =[R_itsc, i0c, Cdlc, Dsc, kappa, Di0, ac, std_drt_rc,std_ddt_rc]';

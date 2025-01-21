@@ -114,7 +114,10 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     % Electrolyte and Separator
     c_e = 1120;                 % {modified} [mol/m3] Initial electrolyte concentration
     % Di0a = factors(3,2*length(multi_soc_range)+2)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter]
-    Di0 = factors(2,2*length(multi_soc_range)+1)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter]
+    % Di0c = factors(4,2*length(multi_soc_range)+2)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter]
+    % Di0s = factors(2,2*length(multi_soc_range)+1)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter]
+    
+    % Di0 = factors(2,2*length(multi_soc_range)+1)*De_function(c_e/1000,T);       % {modified} [m2/s] c_e input concentration in [mol/liter]
 
     epsls = 0.5;               % OK
     Lsep = 12.5e-6;              % OK % LGES 2024 02
@@ -130,12 +133,18 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     dlnfdlnc = (0.601-0.24*(c_e/(1000))^0.5+0.982*(1-0.0052*(T-298.15))*(c_e/(1000))^1.5)/(1-0.363)-1; % {modified} replacing f and dfdc
 
     kappa= factors(1,2*length(multi_soc_range)+1)*kappae_function(c_e/1000,T);                 % {modified} c_e input in [mol/liter] 
-    % Di0 = factors(9,i)*De_function(c_e/1000,T);
+    
+    Di0a = factors(8,i)*De_function(c_e/1000,T); %for Del separation
+    Di0c = factors(9,i)*De_function(c_e/1000,T); %for Del separation
+    Di0sa = factors(10,i)*De_function(c_e/1000,T); %for Del separation
+    Di0sc = factors(11,i)*De_function(c_e/1000,T); %for Del separation
+
+    Di0 = [Di0a Di0c Di0sa Di0sc];
 
     %% 
 % Parameter Expressions
-    % aa =factors(5,i)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
-    % ac =factors(5,i+length(multi_soc_range))*3*epssc/Rpc;
+    aa =factors(5,i)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
+    ac =factors(5,i+length(multi_soc_range))*3*epssc/Rpc;
 
     i0a = F*ka*((c_e/c_e_ref)^alphaa)*((cta-cs0a)^alphaa)*cs0a^alphac;                    % {modified} c_e_ref
     i0c = F*kc*((c_e/c_e_ref)^alphaa)*((ctc-cs0c)^alphaa)*cs0c^alphac;                    % {modified} c_e_ref
@@ -148,11 +157,11 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
 
     a_p = factors(6,2*length(multi_soc_range)+2); %a_p is stand for cathode expansion gradient
 
-    aa_raw =factors(3,2*length(multi_soc_range)+1)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
-    ac_raw =factors(4,2*length(multi_soc_range)+1)*3*epssc/Rpc;
-
-    aa = aa_raw*(1 - a_n5*soc);
-    ac = ac_raw*(1 + a_p*soc); % Cathode specific sueface area increases upon soc
+    % aa_raw =factors(3,2*length(multi_soc_range)+1)*3*epssa/Rpa;   % {modifed} [m2/m3] this is specific area per a thickness % *+*
+    % ac_raw =factors(4,2*length(multi_soc_range)+1)*3*epssc/Rpc;
+    % 
+    % aa = aa_raw*(1 - a_n5*soc);
+    % ac = ac_raw*(1 + a_p*soc); % Cathode specific sueface area increases upon soc
 
 
     sigmaeffa =(epssa/taua)*sigmaa; % {modified} all Bruggman relationships are modified.
@@ -162,9 +171,10 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
     kappaeffc = (epslc/tauc)*kappa;
     kappaeffs = (epsls/taus)*kappa;
     
-    Dieffa = (epsla/taua)*Di0;
-    Dieffc = (epslc/tauc)*Di0;
-    Dieffs = (epsls/taus)*Di0;
+    Dieffa = (epsla/taua)*Di0a;
+    Dieffc = (epslc/tauc)*Di0c;
+    Dieffsa = (epsls/taus)*Di0sa;
+    Dieffsc = (epsls/taus)*Di0sc;
     
     dx = 0.0001; % finite difference step size.
     chg = 0.5; % amount weighting on charging curve wrpt discharging.
@@ -180,6 +190,8 @@ addpath('C:\Users\admin\Documents\GitHub\JunSub\준섭_EIS_LGES\1_standalone\int
 %% Calculation
 
 
+%% Calculation
+
 for k = 1:N
 %*************************************************************************
 % There are three types of dimensionless laplace variables defined in each
@@ -188,7 +200,8 @@ for k = 1:N
 %sa/sc - corresponds to the anode/cathode%      
 sa=1i*omegagen(k)*epsla*La^2/Dieffa;          %[refer to list of symbols]        
 sc=1i*omegagen(k)*epslc*Lc^2/Dieffc;          %[refer to list of symbols]                    
-ss=1i*omegagen(k)*epsls*Lsep^2/Dieffs;        %[refer to list of symbols]        
+ssa=1i*omegagen(k)*epsls*Lsep^2/Dieffsa;        %[refer to list of symbols]        
+ssc =1i*omegagen(k)*epsls*Lsep^2/Dieffsc;        %[refer to list of symbols]        
 
 %s2a/s2c - corresponds to the anode/cathode particle
 spa=1i*omegagen(k);      %   s2a                 %[refer to list of symbols]        
@@ -199,21 +212,13 @@ spc=1i*omegagen(k);      %   s2c                 %[refer to list of symbols]
 Rcta=R*T/i0a/F/(alphaa+alphac);                 %[refer to list of symbols]        
 Rctc=R*T/i0c/F/(alphaa+alphac);                 %[refer to list of symbols]        
 
+
 paraa = [dUdca,Rpa,Dsa,F,spa,Cdla,Rcta,C_filma,Rfa,mu_drt_ra,sig_drt_ra,mu_ddt_ra,sig_ddt_ra]; % LGES V2 2024 05
 parac = [dUdcc,Rpc,Dsc,F,spc,Cdlc,Rctc,C_filmc,Rfc,mu_drt_rc,sig_drt_rc,mu_ddt_rc,sig_ddt_rc]; % LGES V2 2024 05
 
 betaa = beta_func(paraa,type_dist); % LGES V2 2024 05
 betac = beta_func(parac,type_dist); % LGES V2 2024 05
 
-% %for comparison beta & zloc of integral & equation
-% betaa_sum(1:2,k) = betaa;
-% betac_sum(1:2,k) = betac;
-% 
-% betaa = betaa(1,:);
-% betac = betac(1,:);
-% %-----------end
-
-% local impedance [m2/ohm] times (1/F) 
 %1/betaa(c)/F=Z_p,i in the manuscript (refer to eqn [9])
 
 %*******************************************************
@@ -231,7 +236,8 @@ B1c = (1-tplus)*Lc/F/Dieffc*(2*R*T*(1 - tplus)/F*(1/c_e)*(1+dlnfdlnc))/(1/Lc/ac/
 B2a = La*(1/sigmaeffa+1/kappaeffa)/(1/La/aa/F/betaa);   %[refer to list of symbols]        
 B2c = Lc*(1/sigmaeffc+1/kappaeffc)/(1/Lc/ac/F/betac);   %[refer to list of symbols]        
 
-B3 = 2*kappaeffs*R*T*(1 - tplus)/Dieffs/F*(1/c_e)*(1+dlnfdlnc);  % {modified} to use dlnf/dlnc        
+B3a = 2*kappaeffs*R*T*(1 - tplus)/Dieffsa/F*(1/c_e)*(1+dlnfdlnc);  % {modified} to use dlnf/dlnc        
+B3c = 2*kappaeffs*R*T*(1 - tplus)/Dieffsc/F*(1/c_e)*(1+dlnfdlnc);  % {modified} to use dlnf/dlnc        
 
 %EIGEN VALUES
 
@@ -252,24 +258,31 @@ GAMMAA = -La^3*aa*iapp*(1-tplus)*betaa/sigmaeffa/nu/Dieffa/(lambda1a-lambda2a)*(
 GAMMAC = -Lc^3*ac*iapp*(1-tplus)*betac/sigmaeffc/nu/Dieffc/(lambda1c-lambda2c)*((1/sqrt(lambda2c)/sinh(sqrt(lambda2c))-1/sqrt(lambda1c)/sinh(sqrt(lambda1c)))...
 +sigmaeffc/kappaeffc*(1/sqrt(lambda2c)/tanh(sqrt(lambda2c))-1/sqrt(lambda1c)/tanh(sqrt(lambda1c))));    % [Eqn [20] in paper]
 
-MU = Lsep/sqrt(ss)/Dieffs;       %   [Eqn [20] in paper]
+MUa = Lsep/sqrt(ssa)/Dieffsa;       %   [Eqn [20] in paper]
+MUc = Lsep/sqrt(ssc)/Dieffsc;       %   [Eqn [20] in paper]
 
-BETAA = La/Dieffa/(lambda1a-lambda2a)*((sa-lambda2a+B1a)/(sqrt(lambda1a))/tanh(sqrt(lambda1a))-(sa-lambda1a+B1a)/(sqrt(lambda2a))/tanh(sqrt(lambda2a)))+MU/tanh(sqrt(ss)); %  [Eqn [20] in paper]
-BETAC = Lc/Dieffc/(lambda1c-lambda2c)*((sc-lambda2c+B1c)/(sqrt(lambda1c))/tanh(sqrt(lambda1c))-(sc-lambda1c+B1c)/(sqrt(lambda2c))/tanh(sqrt(lambda2c)))+MU/tanh(sqrt(ss)); %  [Eqn [20] in paper]
+BETAA = La/Dieffa/(lambda1a-lambda2a)*((sa-lambda2a+B1a)/(sqrt(lambda1a))/tanh(sqrt(lambda1a))-(sa-lambda1a+B1a)/(sqrt(lambda2a))/tanh(sqrt(lambda2a)))+MUa/tanh(sqrt(ssa)); %  [Eqn [20] in paper]
+BETAC = Lc/Dieffc/(lambda1c-lambda2c)*((sc-lambda2c+B1c)/(sqrt(lambda1c))/tanh(sqrt(lambda1c))-(sc-lambda1c+B1c)/(sqrt(lambda2c))/tanh(sqrt(lambda2c)))+MUc/tanh(sqrt(ssc)); %  [Eqn [20] in paper]
 
-ZETAA = (GAMMAA+GAMMAC*MU/sinh(sqrt(ss))/BETAC)/(BETAA-(MU/sinh(sqrt(ss)))^2/BETAC);  % [Eqn [20] in paper]
-ZETAC = (GAMMAC+GAMMAA*MU/sinh(sqrt(ss))/BETAA)/(BETAC-(MU/sinh(sqrt(ss)))^2/BETAA);  % [Eqn [20] in paper]
+ZETAA = (GAMMAA+GAMMAC*MUa/sinh(sqrt(ssa))/BETAC)/(BETAA-(MUa/sinh(sqrt(ssa)))^2/BETAC);  % [Eqn [20] in paper]
+ZETAC = (GAMMAC+GAMMAA*MUc/sinh(sqrt(ssc))/BETAA)/(BETAC-(MUc/sinh(sqrt(ssc)))^2/BETAA);  % [Eqn [20] in paper]
 
 
 %%%%okokokokokko%%%%%
 
-C_5 = B3/sqrt(ss)*(ZETAC/sinh(sqrt(ss))-ZETAA/tanh(sqrt(ss)));    %[Eqn[14] in paper]
+C_5a = B3a/sqrt(ssa)*(ZETAC/sinh(sqrt(ssa))-ZETAA/tanh(sqrt(ssa)));    %[Eqn[14] in paper]
+C_5c = B3c/sqrt(ssc)*(ZETAC/sinh(sqrt(ssc))-ZETAA/tanh(sqrt(ssc)));    %[Eqn[14] in paper]
 % C_6 = B3*ZETAA/sqrt(ss);                                           %[Eqn[14] in paper]
 
-c_sep_xs_0 = C_5;
-c_sep_xs_1 = B3/sqrt(ss)*(ZETAC/tanh(sqrt(ss))-ZETAA/sinh(sqrt(ss)));
+c_sep_xs_0a = C_5a;
+c_sep_xs_0c = C_5c;
 
-phi2_sep_xs_0 = Lsep*iapp/kappaeffs*((c_sep_xs_0-c_sep_xs_1)/iapp+1);     %[Combine Eqn [27] and the line above]
+c_sep_xs_1a = B3a/sqrt(ssa)*(ZETAC/tanh(sqrt(ssa))-ZETAA/sinh(sqrt(ssa)));
+c_sep_xs_1c = B3c/sqrt(ssc)*(ZETAC/tanh(sqrt(ssc))-ZETAA/sinh(sqrt(ssc)));
+
+phi2_sep_xs_0a = Lsep*iapp/kappaeffs*((c_sep_xs_0a-c_sep_xs_1a)/iapp+1);     %[Combine Eqn [27] and the line above]
+phi2_sep_xs_0c = Lsep*iapp/kappaeffs*((c_sep_xs_0c-c_sep_xs_1c)/iapp+1);     %[Combine Eqn [27] and the line above]
+
 phi2_sep_xs_1 = 0;      %   reference point
 
 %---------------------------------<<<<<<<<<<<CATHODE CATHODE CATHODE CATHODE >>>>>>>>>>>>>>>>>>>>>>>>---------------------------------------------------------
@@ -287,7 +300,7 @@ C_8_c=-Lc/sigmaeffc*((sc-lambda1c)/B1c*C_1_c*(1-Lc^2*ac*F*betac/sigmaeffc/lambda
 GAMMALAMBDAC1=-B1c*iapp/sqrt(lambda1c)/(lambda1c-lambda2c)/tanh(sqrt(lambda1c))-C_2_c/sinh(sqrt(lambda1c));
 GAMMALAMBDAC2= B1c*iapp/sqrt(lambda2c)/(lambda1c-lambda2c)/tanh(sqrt(lambda2c))-C_4_c/sinh(sqrt(lambda2c));
 
-phi1x1c=-Lc^3*ac*F*betac/sigmaeffc^2*((sc-lambda1c)/B1c/lambda1c*(GAMMALAMBDAC1)+(sc-lambda2c)/B1c/lambda2c*(GAMMALAMBDAC2))+C_7_c+C_8_c;
+phi1x1c=-Lc^3*ac*F*betac/sigmaeffc^2*((sc-lambda1c)/B1c/lambda1c*(GAMMALAMBDAC1)+(sc-lambda2c)/B1c/lambda2c*(GAMMALAMBDAC2))+C_7_c+C_8_c; % eqn[31]
 
 
 
@@ -304,17 +317,17 @@ GAMMALAMBDAA2=-B1a*iapp/sqrt(lambda2a)/(lambda1a-lambda2a)/sinh(sqrt(lambda2a))-
 
 
 C_7_a=-La*iapp/sigmaeffa*(1-La^2*aa*F*betaa/iapp/sigmaeffa*((sa-lambda1a)/B1a/sqrt(lambda1a)*C_2_a+(sa-lambda2a)/B1a/sqrt(lambda2a)*C_4_a));
-C_8_a=-La/sigmaeffa*((sa-lambda1a)/B1a*GAMMALAMBDAA1*(1-La^2*aa*F*betaa/sigmaeffa/lambda1a)+(sa-lambda2a)/B1a*GAMMALAMBDAA2*(1-La^2*aa*F*betaa/sigmaeffa/lambda2a))+Lsep*iapp/kappaeffs*(1+(c_sep_xs_0-c_sep_xs_1)/iapp)-C_7_a;
+C_8_a=-La/sigmaeffa*((sa-lambda1a)/B1a*GAMMALAMBDAA1*(1-La^2*aa*F*betaa/sigmaeffa/lambda1a)+(sa-lambda2a)/B1a*GAMMALAMBDAA2*(1-La^2*aa*F*betaa/sigmaeffa/lambda2a))+Lsep*iapp/kappaeffs*(1+(c_sep_xs_0a-c_sep_xs_1a)/iapp)-C_7_a;
 
-phi1x1a = - La^3*aa*F*betaa/sigmaeffa^2*((sa-lambda1a)*C_1_a/B1a/lambda1a+(sa-lambda2a)*C_3_a/B1a/lambda2a) + C_8_a;
+phi1x1a = - La^3*aa*F*betaa/sigmaeffa^2*((sa-lambda1a)*C_1_a/B1a/lambda1a+(sa-lambda2a)*C_3_a/B1a/lambda2a) + C_8_a; 
 
 %*************************************************************************
 
 %------------Overall Cell Potential Drop (Sandwich)------------------------
 
 c_imp(k,i) = (L2*spc)-(phi1x1c-phi2_sep_xs_1)/iapp;
-a_imp(k,i) = (L1*spa)-(phi2_sep_xs_0-phi1x1a)/iapp;
-s_imp(k,i) = -(phi2_sep_xs_1-phi2_sep_xs_0)/iapp;
+a_imp(k,i) = (L1*spa)-(phi2_sep_xs_0a-phi1x1a)/iapp;
+s_imp(k,i) = -(phi2_sep_xs_1-phi2_sep_xs_0c)/iapp;
 fc_imp(k,i) = -(phi1x1c-phi1x1a)/iapp;
 
 %cell_potentiala (k) = Zc;
@@ -332,7 +345,7 @@ fc_imp(k,i) = -(phi1x1c-phi1x1a)/iapp;
 end
 parasa(:,i) = [R_itsca(i), i0a, Cdla, Dsa, aa]';
 parasc(:,i) = [R_itscc(i), i0c, Cdlc, Dsc, ac, std_drt_ra,std_ddt_ra, std_drt_rc,std_ddt_rc, kappa, Di0]';
-    end 
+end 
 
 Av_grad_dist = [a_n1 a_n2 a_n3 a_n4 a_n5 0 a_p]';
 assignin('base',"Av_grad_dist",Av_grad_dist)
@@ -529,4 +542,3 @@ sig=(log(v/m^2+1))^0.5;
 
 
 end
-

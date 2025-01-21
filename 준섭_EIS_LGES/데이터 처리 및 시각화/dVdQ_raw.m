@@ -166,11 +166,11 @@ xlabel('soc')
 %% dV/dQ Calculation
 
 %dVdQ calc
-if direc == 0;
+if direc == 0
     dVdQ_ocv = diff(ocv(:,2))./diff(ocv(:,3));
     dVdQ_ocpp = diff(ocpp(:,2))./diff(ocpp(:,3));
     dVdQ_ocpn = diff(ocpn(:,2))./diff(ocpn(:,3));
-elseif direc == 1;
+elseif direc == 1
      dVdQ_ocv = -diff(ocv(:,2))./diff(ocv(:,3));
     dVdQ_ocpp = -diff(ocpp(:,2))./diff(ocpp(:,3));
     dVdQ_ocpn = -diff(ocpn(:,2))./diff(ocpn(:,3));
@@ -191,12 +191,12 @@ y_stoi = para_hat(3) + (para_hat(4)-para_hat(3))*y_soc;
 
 figure
 hold on;
-plot(ocv(1:end-1,1),dVdQ_ocv,'k-','LineWidth',2);
+plot(ocv(1:end-1,1),dVdQ_ocv,'k-','LineWidth',1);
 % plot(1-ocpp(1:end-1,1),dVdQ_ocpp,'r:','LineWidth',2);
 % plot(ocpn(1:end-1,1),dVdQ_ocpn,'b:','LineWidth',2);
 
-plot(y_stoi,dVdQ_ocpp,'r:','LineWidth',2);
-plot(x_stoi,dVdQ_ocpn,'b:','LineWidth',2);
+plot(y_stoi,dVdQ_ocpp,'r:','LineWidth',1);
+plot(x_stoi,dVdQ_ocpn,'b:','LineWidth',1);
 
 grid on;
 box on;

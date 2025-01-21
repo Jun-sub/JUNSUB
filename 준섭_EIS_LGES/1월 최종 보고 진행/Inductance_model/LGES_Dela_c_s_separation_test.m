@@ -1,25 +1,13 @@
-%% 
-% This function dl
-% (1) finds the best-fit parameters for a halfcells calls a EIS model function
-% (2) improve fitting result by addapting additional distribution model
-
-%Configuration 설정 후 최적화 진행
-
-%결과는 para_sum으로 저장, (1) SOC P2D model 사용 (2) R_itsc (3) i0 (4) C_dl (5) Ds (6) kappa_el (7) D_el (8) Av
-%P2D + Dist model 사용 (11) R_itsc (12) i0 (13) C_dl (14) Ds (15) kappa_el
-%(16) D_el (17) Av (18) sigma
-%---------------------------------------------------------------------------------------%
-
-    clear; clc; close all
+clc, clear, close all;
 
 %% Configurations
 % soc range 
-    soc_vec = 20:10:80;
+    soc_vec = 40;
     % fitting할 soc 범위 지정, 0~100%, 10% 단위
     % 단일 SOC에 대해 진행할 경우 단일 SOC값만 입력. 
     
-    save_path = 'G:\공유 드라이브\Battery Software Lab\Projects\LGES 2023\발표 및 공유자료\최종 보고서\Half_L\Del_separation 이전\Blend\Anode'; %파라미터 결과 저장 폴더 경로 지정 
-    save_check = 1; % 피규어 및 파라미터 데이터 저장 유무 선택, 0이면 결과 저장 x, 1이면 결과 저장 O
+    save_path = 'G:\공유 드라이브\Battery Software Lab\Projects\LGES 2023\발표 및 공유자료\최종 보고서\Half_L\Natural\Anode'; %파라미터 결과 저장 폴더 경로 지정 
+    save_check = 0; % 피규어 및 파라미터 데이터 저장 유무 선택, 0이면 결과 저장 x, 1이면 결과 저장 O
     % 주의: 동일한 폴더에 동일한 type_acf, type_dist 사용시 기존 파일 삭제 후 저장됨
 
 % Fitting configuration
@@ -27,8 +15,8 @@
     type_acf = 1; % 1 for anode, 2 for cathode, 3 for full cell (현재 구현되지 않는 상태)
     type_dist = 2; % 0 for DRT, 1 for DDT, 2 for integrated
     type_anode = 2; % 0 for base, 1 for natural 2 for blend
-    num_iter = 100; %P2D 최적화 과정 최대 반복 횟수
-    num_iter_dist = 100; % Dist 최적화 과정 최대 반복 횟수
+    num_iter = 20; %P2D 최적화 과정 최대 반복 횟수
+    num_iter_dist = 0; % Dist 최적화 과정 최대 반복 횟수
 
 % EIS data path
     if type_anode == 0
@@ -77,13 +65,7 @@
         'TolFun',1e-10,'TolX',1e-10,'FinDiffType','central');
 
 %Fitting start
-%parameter vectorization for save
-para_sum = ones(10,length(soc_vec));
-para_sum_dist = ones(12,length(soc_vec));
-
-factors_hat_sum = ones(12,length(soc_vec));
-factors_hat_dist_sum = ones(14,length(soc_vec));
-
+para_sum = [];
 for i = 1:length(soc_vec)
 % Parameters 
     bounds = [...
@@ -179,51 +161,6 @@ fprintf('Start P2D fitting \n')
 [z_model1, paras1] = BSL_func_EISmodel_V1_half_L(f_data,factors_hat,soc,T,type_acf);
 
 fprintf('P2D fitting has successfully completed \n')
-% Nyquist Plot
-figure(2)
-t = tiledlayout(1,2,"TileSpacing","compact",'Padding','compact');
-nexttile
-plot(z_data(:,1),-z_data(:,2),'ok','linewidth',1); hold on
-%plot(z_model0(:,1),-z_model0(:,2),'ob','linewidth',1)
-plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
-%legend('Exp Data','Model Initial','Model Fit')
-daspect ([1 1 2])
-
-hold off;
-    axis_limit = 1.1*max(max(abs(z_data)));
-    set(gca,'Box','on',... %Axis Properties: BOX   
-    'PlotBoxAspectRatio',[1 1 1],... % Size - you can either use 'position' or 'dataaspectratio' or their combinations
-    'FontUnits','points','FontSize',10,'FontName','Times New Roman',... % Fonts
-    'XLim',[0 axis_limit],'Ylim',[0 axis_limit])
-%    hold off
-    grid on;    
-    xlabel('Z_{re} [Ohm]')
-    ylabel('-Z_{im} [Ohm]')
-    legend('Exp Data','P2D')
-
-% Zoom-in semicircle
-nexttile
-plot(z_data(:,1),-z_data(:,2),'ok','linewidth',1); hold on
-%plot(z_model0(:,1),-z_model0(:,2),'ob','linewidth',1)
-plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
-%legend('Exp Data','Model Initial','Model Fit')
-
-
-f_zoom_lb = 10; %[Hz] 
-idx_zoom = f_data>f_zoom_lb;
-axis_limit = 1.1*max(max(abs(z_data(idx_zoom,:))));
-set(gca,'Box','on',... %Axis Properties: BOX   
-'PlotBoxAspectRatio',[1 1 1],... % Size - you can either use 'position' or 'dataaspectratio' or their combinations
-'FontUnits','points','FontSize',10,'FontName','Times New Roman',... % Fonts
-'XLim',[0 axis_limit],'Ylim',[0 axis_limit])
- hold off
- grid on;
- xlabel('Z_{re} [Ohm]')
- ylabel('-Z_{im} [Ohm]')
- legend('Exp Data','P2D')
-
-set(gcf,'position',[400 600 1000 500])
-pause(0.1) %for check P2D figure
 
 %% Fitting Improvement by Distributed models.
 fprintf(['Start P2D + ' dist ' fitting \n'])
@@ -248,74 +185,42 @@ lb(end-1:end) = 0.01; %DRT&DDT Std
                       f_data,weighted_data, lb, ub, options_dist);
    toc;
 
+   factors_hat_test = factors_hat_dist;
  %% [dist] Plot Results
-[z_model2, paras2] = BSL_func_EISmodel_V_half_Dist_integrated_L(f_data,factors_hat_dist,soc,T,type_acf,type_dist);
-fprintf(['P2D + ' dist ' fitting has successfully completed \n'])
-% Nyquist Plot
-figure(4)
-t = tiledlayout(1,2,"TileSpacing","compact",'Padding','compact');
-nexttile(1)
-plot(z_data(:,1),-z_data(:,2),'ok','linewidth',1); hold on
-plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
-plot(z_model2(:,1),-z_model2(:,2),'o','linewidth',1,'Color',[0.3010 0.7450 0.9330])
+z_model2 = struct();
+gap = [0.2 0.8 1 1.5 2 2.5];
+    for i = 1:6
+    
+    factors_hat_test(11) = factors_hat_dist(11)*gap(i); % 6 = Dela, 10 = Delc, 11 = Dels
+    
+    [z_model2(i).data, paras2] = BSL_func_EISmodel_V_half_Dist_integrated_L(f_data,factors_hat_test,soc,T,type_acf,type_dist);
+    
+    legend_name(i) = {num2str(gap(i))};
+    end
+end 
 
-legend('Exp Data','P2D',['P2D' ' + ' dist])
-axis_limit = 1.1*max(max(abs(z_data)));
+%z_model data comparison
+
+figure
+hold on
+
+for i = 1:6
+    plot(z_model2(i).data(:,1),-z_model2(i).data(:,2),'o','MarkerSize',4)
+
+    
+end
+
+plot(z_re_data,-z_im_data,'-','LineWidth',0.3);
+
+legend_name(end+1) = {'Exp data'};
+axis_limit = 1.1*max(max(abs(z_model2(5).data)));
     set(gca,'Box','on',... %Axis Properties: BOX   
     'PlotBoxAspectRatio',[1 1 1],... % Size - you can either use 'position' or 'dataaspectratio' or their combinations
     'FontUnits','points','FontSize',10,'FontName','Times New Roman',... % Fonts
     'XLim',[0 axis_limit],'Ylim',[0 axis_limit])
 
+    legend(legend_name)
     grid on;
     title([cell_type ' soc' num2str(SOC) ' P2D' ' + ' dist])
     xlabel('Z_{re} [Ohm]')
     ylabel('-Z_{im} [Ohm]')
-hold off
-
-
-% Zoom-in semicircle
-nexttile(2)
-plot(z_data(:,1),-z_data(:,2),'ok','linewidth',1); hold on
-plot(z_model1(:,1),-z_model1(:,2),'or','linewidth',1)
-plot(z_model2(:,1),-z_model2(:,2),'o','linewidth',1,'Color',[0.3010 0.7450 0.9330])
-legend('Exp Data','P2D',['P2D' ' + ' dist])
- f_zoom_lb = 10; %[Hz] 
-    idx_zoom = f_data>f_zoom_lb;
-    axis_limit = 1.1*max(max(abs(z_data(idx_zoom,:))));
-    set(gca,'Box','on',... %Axis Properties: BOX   
-    'PlotBoxAspectRatio',[1 1 1],... % Size - you can either use 'position' or 'dataaspectratio' or their combinations
-    'FontUnits','points','FontSize',10,'FontName','Times New Roman',... % Fonts
-    'XLim',[0 axis_limit],'Ylim',[0 axis_limit])
- 
-    grid on;
-    title([cell_type ' soc' num2str(SOC) ' P2D' ' + ' dist ' Zoom-in'])
-    xlabel('Z_{re} [Ohm]')
-    ylabel('-Z_{im} [Ohm]')
-hold off;
-
-set(gcf,'position',[1400 600 1000 500])
-
-para_sum(1,i) = SOC;
-para_sum(2:10,i) = paras1;
-
-para_sum_dist(1,i) = SOC;
-para_sum_dist(2:12,i) = paras2;
-
-factors_hat_sum(1,i) = SOC;
-factors_hat_sum(2:12,i) = factors_hat';
-
-factors_hat_dist_sum(1,i) = SOC;
-factors_hat_dist_sum(2:14,i) = factors_hat_dist';
-
-if save_check == 1
-   savefig(fullfile(save_path,[cell_type num2str(soc_vec(i))]))
-
-   disp('Data saved successfully')
-else 
-   disp('Data is not saved')
-end 
-end
-
-if save_check == 1
-   save(fullfile(save_path,'workspace'))
-end 

@@ -16,24 +16,24 @@ clear; clc; close all
 
 %% Configurations
 % multi-soc range 
-    multi_start = 40;
-    multi_end = 70;
+    multi_start = 20;
+    multi_end = 80;
     multi_soc_interval = 10;
 
 % Fitting configuration
     type_weight = 1; % 0 for absoulte error, 1 for relative error
 
-    type_anode = 1; % 0 for base, 1 for natural 2 for blend
+    type_anode = 2; % 0 for base, 1 for natural 2 for blend
     type_dist = 2; % 0 for DRT, 1 for DDT, 2 for integrated (DRT + DDT)
 
-    num_iter = 10; %P2D optimization max iter
-    num_iter_dist = 0; % Dist optimization max iter
+    num_iter = 100; %P2D optimization max iter
+    num_iter_dist = 50; % Dist optimization max iter
 
 % Temperature
     T = 298.15; %[K]
  
-save_path = 'G:\공유 드라이브\Battery Software Lab\Projects\LGES 2023\발표 및 공유자료\최종 보고서\Del, Av separation\Blend';
-save_check = 0; % 0: don't save, 1: save
+save_path = 'G:\공유 드라이브\Battery Software Lab\Projects\LGES 2023\발표 및 공유자료\최종 보고서\Del,Delc,Delsa,Delsc separation_multi-soc';
+save_check = 1; % 0: don't save, 1: save
 % 주의: 동일한 폴더에 동일한 type_acf, type_dist 사용시 기존 파일 삭제 후 저장됨
 
 % EIS data path
